@@ -190,7 +190,4 @@ class TestMakeModelChangelog:
             i += 1
             if x == y:
                 continue
-            print(i)
-            print(f"actual: {x}")
-            print(f"expect: {y}")
         assert actual == expected

@@ -10,6 +10,7 @@ dependencies = [
     "click>=8.1.8",
     "liquichange>=0.2.1",
     "minicypher",
+    "prefect>=3.1.15",
     "pytest>=8.3.4",
 ]
 
