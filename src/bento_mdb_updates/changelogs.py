@@ -1,46 +1,25 @@
-"""Convert cdes yaml to neo4j cypher statements."""
+"""Common functions shared by changelog generation scripts."""
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
+import logging
+from string import Template
 from typing import TYPE_CHECKING
 
-import yaml
 from bento_meta.mdb.mdb import make_nanoid
-from bento_meta.objects import Concept, Term, ValueSet
+from bento_meta.objects import Concept, Edge, Property, Tag, Term, ValueSet
 from liquichange.changelog import Changelog, Changeset, CypherChange
-from minicypher.clauses import Match, Merge, OnCreateSet
-from minicypher.entities import N, R, T
+from minicypher.clauses import Clause, Match, Merge, OnCreateSet
+from minicypher.entities import G, N, P, R, T, _condition, _return
+from minicypher.functions import Func
 from tqdm import tqdm
-
-from bento_mdb_updates.changelog_utils import Statement, escape_quotes_in_attr
-from cde_pv_flow import load_model_specs_from_yaml
-
-if TYPE_CHECKING:
-    from datatypes import AnnotationSpec, ModelCDESpec, ModelSpec
 
 if TYPE_CHECKING:
     from bento_meta.entity import Entity
-_COMMIT = f"CDEPV-{datetime.today().strftime('%Y%m%d')}"
-AUTHOR = "NWM"
-BASE_OUTPUT_PATH = Path().cwd() / "output" / "changelogs"
 
+    from bento_mdb_updates.datatypes import AnnotationSpec, ModelCDESpec
 
-def load_cdes_from_model_spec(spec: ModelSpec) -> ModelCDESpec:
-    """Load model cdes from spec."""
-    path = (
-        Path().cwd()
-        / "output/model_cdes"
-        / spec["handle"]
-        / f"{spec['handle']}_{spec['version']}_cdes.yml"
-    )
-    with path.open(mode="r", encoding="utf-8") as f:
-        try:
-            return yaml.load(f, Loader=yaml.FullLoader)  # noqa: S506
-        except yaml.YAMLError as exc:
-            msg = f"Error parsing YAML file {path}: {exc}"
-            raise ValueError(msg) from exc
+logger = logging.getLogger(__name__)
 
 
 def cypherize_entity(entity: Entity) -> N:
@@ -48,12 +27,211 @@ def cypherize_entity(entity: Entity) -> N:
     return N(label=entity.get_label(), props=entity.get_attr_dict())
 
 
+def escape_quotes_in_attr(entity: Entity) -> None:
+    """
+    Escapes quotes in entity attributes.
+
+    Quotes in string attributes may or may not already be escaped, so this function
+    unescapes all previously escaped ' and " characters and replaces them with
+    """
+    for attr in entity.attspec:
+        val = getattr(entity, attr, None)
+        if val is not None and isinstance(val, str):
+            # First unescape any previously escaped quotes
+            unescape_val = val.replace(r"\'", "'").replace(r"\"", '"')
+
+            # Escape all quotes, use utf-8 encoded versions of backslash and quotes
+            # so extra backslash isn't added to the string
+            escape_val = unescape_val.replace(
+                r"'",
+                "\u005c\u0027",
+            ).replace(
+                r'"',
+                "\u005c\u0022",
+            )
+
+            setattr(entity, attr, escape_val)
+
+
+def reset_pg_ent_counter() -> None:
+    """Reset property graph entity variable counters to 0."""
+    N._reset_counter()
+    R._reset_counter()
+
+
+def generate_match_clause(entity: Entity, ent_c: N) -> Match:
+    """Generate Match clause for entity."""
+    if isinstance(entity, Edge):
+        return match_edge(edge=entity, ent_c=ent_c)
+    if isinstance(entity, Property):  # remove '_parent_handle' from ent_c property
+        ent_c.props.pop("_parent_handle", None)
+        return match_prop(prop=entity, ent_c=ent_c)
+    if isinstance(entity, Tag):
+        return match_tag(tag=entity, ent_c=ent_c)
+    return Match(ent_c)
+
+
+def match_edge(edge: Edge, ent_c: N) -> Match:
+    """Add MATCH statement for edge."""
+    src_c = N(label="node", props=edge.src.get_attr_dict())
+    dst_c = N(label="node", props=edge.dst.get_attr_dict())
+    src_trip = T(ent_c, R(Type="has_src"), src_c)
+    dst_trip = T(ent_c, R(Type="has_dst"), dst_c)
+    path = G(src_trip, dst_trip)
+    return Match(path)
+
+
+def match_prop(prop: Property, ent_c: N) -> Match:
+    """Add MATCH statement for property."""
+    if not prop._parent_handle:
+        msg = f"Property missing parent handle {prop.get_attr_dict()}"
+        raise AttributeError(msg)
+    par_c = N(props={"handle": prop._parent_handle})
+    prop_trip = T(par_c, R(Type="has_property"), ent_c)
+    return Match(prop_trip)
+
+
+def match_tag(tag: Tag, ent_c: N) -> Match:
+    """Add MATCH statement for tag."""
+    if not tag._parent:
+        msg = f"Tag missing parent {tag.get_attr_dict()}"
+        raise AttributeError(msg)
+    parent = tag._parent
+    par_c = N(label=parent.get_label(), props=parent.get_attr_dict())
+    par_c.props.pop("_parent_handle", None)
+    # temp workaround for long matches
+    par_match_clause = generate_match_clause(entity=parent, ent_c=par_c)
+    par_match_str = str(par_match_clause)[6:]
+    tag_trip = T(par_c.plain_var(), R(Type="has_tag"), ent_c)
+    return Match(par_match_str, tag_trip)
+
+
+class Case(Clause):
+    """Create a CASE clause with the arguments."""
+
+    template = Template("CASE $slot1")
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class Delete(Clause):
+    """Create a DELETE clause with the arguments."""
+
+    template = Template("DELETE $slot1")
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class DetachDelete(Clause):
+    """Create a DETACH DELETE clause with the arguments."""
+
+    template = Template("DETACH DELETE $slot1")
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class ForEach(Clause):
+    """Create an FOREACH clause with the arguments."""
+
+    template = Template("FOREACH $slot1")
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class Statement:
+    """Create a Neo4j statement comprised of clauses (and strings) in order."""
+
+    def __init__(self, *args, terminate=False, use_params=False):
+        self.clauses = args
+        self.terminate = terminate
+        self.use_params = use_params
+        self._params = None
+
+    def __str__(self):
+        stash = P.parameterize
+        if self.use_params:
+            P.parameterize = True
+        else:
+            P.parameterize = False
+        ret = " ".join([str(x) for x in self.clauses])
+        if self.terminate:
+            ret = ret + ";"
+        P.parameterize = stash
+        return ret
+
+    @property
+    def params(self):
+        if self._params is None:
+            self._params = {}
+            for c in self.clauses:
+                for ent in c.args:
+                    if isinstance(ent, (N, R)):
+                        for p in ent.props.values():
+                            self._params[p.var] = p.value
+                    else:
+                        if "nodes" in vars(type(ent)):
+                            for n in ent.nodes():
+                                for p in n.props.values():
+                                    self._params[p.var] = p.value
+                        if "edges" in vars(type(ent)):
+                            for e in ent.edges():
+                                for p in e.props.values():
+                                    self._params[p.var] = p.value
+        return self._params
+
+
+class With(Clause):
+    """Create a WITH clause with the arguments."""
+
+    template = Template("WITH $slot1")
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+    @staticmethod
+    def context(arg: object) -> str:
+        return _return(arg)
+
+
+class When(Clause):
+    """Create a WHEN clause with the arguments."""
+
+    template = Template("WHEN $slot1")
+    joiner = " {} "
+
+    @staticmethod
+    def context(arg):
+        return _condition(arg)
+
+    def __init__(self, *args, op="AND"):
+        super().__init__(*args, op=op)
+        self.op = op
+
+    def __str__(self):
+        values = []
+        for c in [self.context(x) for x in self.args]:
+            if isinstance(c, str):
+                values.append(c)
+            elif isinstance(c, Func):
+                values.append(str(c))
+            elif isinstance(c, list):
+                values.extend([str(x) for x in c])
+            else:
+                values.append(str(c))
+        return self.template.substitute(slot1=self.joiner.format(self.op).join(values))
+
+
 def convert_annotation_to_changesets(
     annotation: AnnotationSpec,
     changeset_id: int,
+    author: str | None = None,
+    _commit: str | None = None,
 ) -> list[Changeset]:
     """Convert annotation to list of Liquibase Changesets."""
-    # only care about value set annotations, others already added to neo4j
     if (
         annotation["entity"]["attrs"]["value_domain"] != "value_set"
         and not annotation["entity"]["entity_has_enum"]
@@ -69,7 +247,7 @@ def convert_annotation_to_changesets(
         {
             "url": f"{base_url}{cde_id}{f'?version={cde_ver}' if cde_ver else ''}",
             "handle": f"{cde_id}|{cde_ver}",
-            "_commit": _COMMIT,
+            "_commit": _commit,
         },
     )
     cypher_cde_vs = cypherize_entity(cde_vs)
@@ -84,7 +262,7 @@ def convert_annotation_to_changesets(
     ):
         synonyms = pv.pop("synonyms")  # separate synonyms dict from pv attrs
         pv_term = Term(pv)
-        pv_term._commit = _COMMIT  # noqa: SLF001
+        pv_term._commit = _commit  # noqa: SLF001
         escape_quotes_in_attr(pv_term)
         cypher_pv_term = cypherize_entity(pv_term)
         term_commit = cypher_pv_term.props.pop("_commit")
@@ -101,7 +279,7 @@ def convert_annotation_to_changesets(
             Statement(Match(cypher_cde_vs, cypher_pv_term), Merge(stmt_merge_trip)),
         )
         # make concept for pv & its synonyms
-        concept = Concept({"_commit": _COMMIT, "nanoid": make_nanoid()})
+        concept = Concept({"_commit": _commit, "nanoid": make_nanoid()})
         cypher_concept = cypherize_entity(concept)
         concept_commit = cypher_concept.props.pop("_commit")
 
@@ -125,7 +303,7 @@ def convert_annotation_to_changesets(
             )
             for syn_attrs in synonyms:
                 syn_term = Term(syn_attrs)
-                syn_term._commit = _COMMIT  # noqa: SLF001
+                syn_term._commit = _commit  # noqa: SLF001
                 escape_quotes_in_attr(syn_term)
                 cypher_syn_term = cypherize_entity(syn_term)
                 syn_commit = cypher_syn_term.props.pop("_commit")
@@ -153,7 +331,7 @@ def convert_annotation_to_changesets(
         changesets.append(
             Changeset(
                 id=str(cs_id),
-                author=AUTHOR,
+                author=author,
                 change_type=CypherChange(text=str(stmt)),
             ),
         )
@@ -163,33 +341,26 @@ def convert_annotation_to_changesets(
     return changesets
 
 
-def convert_model_cdes_to_changelog(model_cdes: ModelCDESpec) -> Changelog:
+def convert_model_cdes_to_changelog(
+    model_cdes: ModelCDESpec,
+    author: str | None = None,
+    _commit: str | None = None,
+) -> Changelog:
     """Convert model cde annotations with PVs and synonyms to Liquibase Changelog."""
     changelog = Changelog()
     changeset_id = 1
     for annotation in tqdm(model_cdes["annotations"], desc="Annotations"):
-        print(f"Annotation: {annotation['entity']['key']}")
-        changesets = convert_annotation_to_changesets(annotation, changeset_id)
+        msg = f"Annotation: {annotation['entity']['key']}"
+        logging.info(msg)
+        changesets = convert_annotation_to_changesets(
+            annotation,
+            changeset_id,
+            author,
+            _commit,
+        )
         if not changesets:
             continue
         for changeset in tqdm(changesets, desc="Changesets", total=len(changesets)):
             changelog.add_changeset(changeset)
         del changesets  # garbage collection
     return changelog
-
-
-def main() -> None:
-    """Do stuff."""
-    crdc_models_yml = Path().cwd() / "src/crdc_models.yml"
-    model_specs = load_model_specs_from_yaml(crdc_models_yml)
-    for spec in tqdm(model_specs, desc="Model specs", total=len(model_specs)):
-        model_cdes = load_cdes_from_model_spec(spec)
-        changelog = convert_model_cdes_to_changelog(model_cdes)
-        output_path = (
-            BASE_OUTPUT_PATH / f"{spec['handle']}_{spec['version']}_cde_changelog.xml"
-        )
-        changelog.save_to_file(str(output_path), encoding="UTF-8")
-
-
-if __name__ == "__main__":
-    main()

@@ -12,11 +12,11 @@ from bento_mdf.mdf.reader import MDFReader
 if TYPE_CHECKING:
     from bento_meta.model import Model
 
-    from clients import CADSRClient, NCItClient
-    from datatypes import ModelCDESpec, ModelSpec
+    from bento_mdb_updates.clients import CADSRClient, NCItClient
+    from bento_mdb_updates.datatypes import ModelCDESpec, ModelSpec
 
 
-def load_model_specs_from_yaml(yaml_file: Path) -> list[ModelSpec]:
+def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
     """Load model specs from YAML file."""
     with Path(yaml_file).open(mode="r", encoding="utf-8") as f:
         try:
@@ -29,7 +29,7 @@ def load_model_specs_from_yaml(yaml_file: Path) -> list[ModelSpec]:
 def make_model(
     model_spec: ModelSpec,
 ) -> Model:
-    """Get a Model obejct from CRDC model spec."""
+    """Get a Model object from CRDC model spec."""
     mdf = MDFReader(*model_spec["yaml_file_names"], handle=model_spec["handle"])
     mdf.model.version = model_spec["version"]
     return mdf.model
@@ -134,3 +134,19 @@ def add_ncit_synonyms_to_model_cde_spec(
                         pv["synonyms"].append(syn_attrs)
 
         annotation["value_set"] = value_set
+
+
+def load_cdes_from_model_spec(spec: ModelSpec) -> ModelCDESpec:
+    """Load model cdes from spec."""
+    path = (
+        Path().cwd()
+        / "output/model_cdes"
+        / spec["handle"]
+        / f"{spec['handle']}_{spec['version']}_cdes.yml"
+    )
+    with path.open(mode="r", encoding="utf-8") as f:
+        try:
+            return yaml.load(f, Loader=yaml.FullLoader)  # noqa: S506
+        except yaml.YAMLError as exc:
+            msg = f"Error parsing YAML file {path}: {exc}"
+            raise ValueError(msg) from exc

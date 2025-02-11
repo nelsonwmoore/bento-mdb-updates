@@ -2,7 +2,7 @@
 
 from bento_meta.objects import Property
 
-from bento_mdb_updates.changelog_utils import escape_quotes_in_attr
+from bento_mdb_updates.changelogs import escape_quotes_in_attr
 
 
 def test_escape_quotes_in_attr() -> None:

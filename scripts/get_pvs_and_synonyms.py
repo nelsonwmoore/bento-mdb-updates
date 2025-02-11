@@ -9,8 +9,8 @@ from pathlib import Path
 from prefect import flow
 from pytz import timezone
 
-from clients import CADSRClient, NCItClient
-from model_cde_utils import (
+from bento_mdb_updates.clients import CADSRClient, NCItClient
+from bento_mdb_updates.model_cdes import (
     add_cde_pvs_to_model_cde_spec,
     add_ncit_synonyms_to_model_cde_spec,
     count_model_cdes,
@@ -42,11 +42,11 @@ def main() -> None:
     ncit_client = NCItClient(Path("src/NCIt_Metathesaurus_Mapping_202408.txt"))
     cadsr_client = CADSRClient()
 
-    for spec in model_specs:
+    for model, spec in model_specs.items():
         # get CDEs from model files
         logging.info(
             "Getting CDEs from %s v%s MDFs...",
-            spec["handle"],
+            model,
             spec["version"],
         )
         model = make_model(spec)

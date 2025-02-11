@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 import pickle
 import re
+import subprocess
 from json import JSONDecodeError
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,9 +15,10 @@ from typing import TYPE_CHECKING
 import requests
 
 if TYPE_CHECKING:
-    from datatypes import PermissibleValue
+    from bento_mdb_updates.datatypes import PermissibleValue
 
 CADSR_API_CACHE = Path().cwd() / "cadsr_api_cache.pkl"
+RESPONSE_200 = 200
 
 
 class CADSRClient:
@@ -138,3 +141,41 @@ class NCItClient:
                 else:
                     ncim[nci_code] = [syn_attrs]
         return ncim
+
+
+class GitHubClient:
+    """Client to interact with GitHub API."""
+
+    BASE_URL = "https://api.github.com"
+
+    def __init__(self, github_token: str | None = None) -> None:
+        """Initialize client."""
+        self.github_token = github_token if github_token else os.environ["GITHUB_TOKEN"]
+
+    def get_repo_tags(self, repo: str) -> list[str]:
+        """Query GitHub API for tags on a given repository."""
+        url = f"{self.BASE_URL}/repos/{repo}/tags"
+        headers = {"Authorization": f"token {self.github_token}"}
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code != RESPONSE_200:
+            msg = f"Failed to get tags for repo {repo}: {response.status_code}"
+            logging.error(msg)
+            return []
+        tags = response.json()
+        return [tag["name"] for tag in tags]
+
+    def commit_and_push_changes(
+        self,
+        file_to_commit: Path,
+        commit_msg: str | None = None,
+    ) -> None:
+        """Commit and push changes to repo."""
+        try:
+            subprocess.run(["git", "add", str(file_to_commit)], check=True)
+            commit_msg = commit_msg or f"Update {file_to_commit.name}"
+            subprocess.run(["git", "commit", "-m", commit_msg], check=True)
+            subprocess.run(["git", "push"], check=True)
+            logging.info("Changes committed and pushed successfully.")
+        except subprocess.CalledProcessError:
+            logging.exception("Failed to add %s to git", file_to_commit.name)
+            return

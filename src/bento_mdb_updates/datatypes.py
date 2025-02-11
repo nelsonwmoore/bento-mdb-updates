@@ -9,11 +9,14 @@ if TYPE_CHECKING:
 
 
 class ModelSpec(TypedDict):
-    """CRDC model spec. Dict with 'handle', 'version', and 'yaml_file_names' keys."""
+    """CRDC model spec. Dict with model repository info and MDF file details."""
 
-    handle: str
-    version: str
-    yaml_file_names: list[str | Path]
+    repository: str
+    mdf_directory: str
+    mdf_files: list[str | Path]
+    in_data_hub: bool
+    versions: list[str]
+    latest_version: str
 
 
 class PermissibleValue(TypedDict):

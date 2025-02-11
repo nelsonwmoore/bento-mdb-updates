@@ -26,7 +26,7 @@ CCDI:
     - 2.1.0
   latest_version: 2.1.0
 CDS:
-  repository: CBBIT/cds-model
+  repository: CBIIT/cds-model
   mdf_directory: model-desc
   mdf_files:
     - cds-model.yml
@@ -94,7 +94,7 @@ HTAN:
     - 24.3.1
   latest_version: 24.3.1
 ICDC:
-  respository: CBIIT/icdc-model-tool
+  repository: CBIIT/icdc-model-tool
   mdf_directory: model-desc
   mdf_files:
     - icdc-model.yaml

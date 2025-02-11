@@ -24,7 +24,7 @@ from minicypher.clauses import (
 )
 from minicypher.entities import N, R, T
 
-from bento_mdb_updates.changelog_utils import (
+from bento_mdb_updates.changelogs import (
     Delete,
     DetachDelete,
     Statement,
