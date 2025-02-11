@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,7 +15,7 @@ class ModelSpec(TypedDict):
     mdf_directory: str
     mdf_files: list[str | Path]
     in_data_hub: bool
-    versions: list[str]
+    versions: list[dict[str, Any]]
     latest_version: str
 
 

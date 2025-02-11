@@ -7,10 +7,13 @@ C3DC:
   - terms.yml
   in_data_hub: false
   versions:
-  - 1.4.0
-  - 2.0.0
-  - 2.1.0
-  latest_version: 2.1.0
+  - version: 1.4.0
+    tag: 1.4.0
+  - version: 2.0.0
+    tag: 2.0.0
+  - version: 2.0.1
+    tag: 2.0.1
+  latest_version: 2.0.1
 CCDI:
   repository: CBIIT/ccdi-model
   mdf_directory: model-desc
@@ -20,9 +23,12 @@ CCDI:
   - terms.yml
   in_data_hub: true
   versions:
-  - 1.9.1
-  - 2.0.0
-  - 2.1.0
+  - version: 1.9.1
+    tag: 1.9.1
+  - version: 2.0.0
+    tag: 2.0.0
+  - version: 2.1.0
+    tag: 2.1.0
   latest_version: 2.1.0
 CDS:
   repository: CBIIT/cds-model
@@ -32,21 +38,29 @@ CDS:
   - cds-model-props.yml
   in_data_hub: true
   versions:
-  - 1.1.0
-  - 1.3.0
-  - 2.1.0
-  - 3.1.2
-  - 4.0.0
-  - 4.0.1
-  - 4.0.2
-  - 4.0.3
-  - 4.0.4
-  - 5.0.1
-  - 5.0.2
-  - 5.0.3
-  - 5.0.4
-  - 6.0.0
-  - 6.0.1
+  - version: 1.1.0
+  - version: 1.3.0
+  - version: 2.1.0
+  - version: 3.1.2
+  - version: 4.0.0
+    tag: 4.0.0
+  - version: 4.0.1
+    tag: 4.0.1
+  - version: 4.0.2
+  - version: 4.0.3
+    tag: 4.0.3-CDS-Release
+  - version: 4.0.4
+    tag: 4.0.4-CDS_Release
+  - version: 5.0.1
+    tag: 5.0.1-CDS_Release
+  - version: 5.0.2
+    tag: 5.0.2-CDS_Release
+  - version: 5.0.3
+    tag: 5.0.3-CDS_Release
+  - version: 5.0.4
+    tag: 5.0.4-CDS_Release
+  - version: 6.0.0
+  - version: 6.0.1
   latest_version: 6.0.1
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
@@ -56,7 +70,7 @@ CRDCSubmission:
   - CRDC_Submission_MDF_Props.yml
   in_data_hub: false
   versions:
-  - 0.2.0
+  - version: 0.2.0
   latest_version: 0.2.0
 CTDC:
   repository: CBIIT/ctdc-model
@@ -66,9 +80,12 @@ CTDC:
   - ctdc_model_properties_file.yaml
   in_data_hub: true
   versions:
-  - 1.0.0
-  - 1.1.0
-  - 1.2.0
+  - version: 1.0.0
+    tag: 1.0.0
+  - version: 1.1.0
+    tag: 1.1.0
+  - version: 1.2.0
+    tag: 1.2.0
   latest_version: 1.2.0
 GDC:
   repository: CBIIT/gdc-model
@@ -79,7 +96,7 @@ GDC:
   - gdc-model-terms.yaml
   in_data_hub: false
   versions:
-  - 3.0.3
+  - version: 3.0.3
   latest_version: 3.0.3
 HTAN:
   repository: CBIIT/htan-model
@@ -90,7 +107,7 @@ HTAN:
   - htan-model-terms.yaml
   in_data_hub: false
   versions:
-  - 24.3.1
+  - version: 24.3.1
   latest_version: 24.3.1
 ICDC:
   repository: CBIIT/icdc-model-tool
@@ -100,10 +117,14 @@ ICDC:
   - icdc-model-props.yaml
   in_data_hub: true
   versions:
-  - 1.0.0
-  - 2.0.0
-  - 3.8.7
-  latest_version: 3.8.7
+  - version: 1.0.0
+  - version: 2.0.0
+    tag: v2.0.0
+    ignore: True
+  - version: 3.8.7
+    tag: Tag_for_FE_v3.8.7_588
+    ignore: True
+  latest_version: 1.0.0
 PDC:
   repository: CBIIT/pdc-model
   mdf_directory: model-desc
@@ -113,7 +134,7 @@ PDC:
   - pdc-model-terms.yaml
   in_data_hub: false
   versions:
-  - 2.0.2
+  - version: 2.0.2
   latest_version: 2.0.2
 mCODE:
   repository: nelsonwmoore/mcode-model
@@ -124,5 +145,5 @@ mCODE:
   - mcode-model-terms.yml
   in_data_hub: false
   versions:
-  - 3.0.0
+  - version: 3.0.0
   latest_version: 3.0.0

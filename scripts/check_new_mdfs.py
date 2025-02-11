@@ -50,12 +50,19 @@ def update_model_versions(
             logging.warning("No repository specified for %s", model)
             continue
         raw_tags = github_client.get_repo_tags(repo)
-        normalized_tags = [normalize_tag_version(t) for t in raw_tags]
         current_versions = spec.get("versions")
         current_latest_version = Version(spec.get("latest_version", "0.0.0"))
 
-        for tag in normalized_tags:
-            tag_version = Version(tag)
+        for tag in raw_tags:
+            normalized_tag = normalize_tag_version(tag)
+            tag_version = Version(normalized_tag)
+
+            if any(
+                v.get("tag") == tag and v.get("ignore", False) for v in current_versions
+            ):
+                logging.info("Ignoring tag %s as it's marked as ignored", tag)
+                continue
+
             if new_only and tag_version <= current_latest_version:
                 logging.info(
                     "Skipping %s, version is not newer than latest version %s",
@@ -63,15 +70,20 @@ def update_model_versions(
                     current_latest_version,
                 )
                 continue
-            if tag not in current_versions:
-                logging.info("Adding %s to versions for %s", tag, model)
-                current_versions.append(tag)
+
+            if not any(v.get("version") == normalized_tag for v in current_versions):
+                logging.info("Adding %s to versions for %s", normalized_tag, model)
+                new_version_entry = {"version": normalized_tag, "tag": tag}
+                current_versions.append(new_version_entry)
                 updated = True
 
         if current_versions:
-            sorted_versions = sorted(current_versions, key=parse_version)
+            sorted_versions = sorted(
+                current_versions,
+                key=lambda x: parse_version(x["version"]),
+            )
             spec["versions"] = sorted_versions
-            spec["latest_version"] = sorted_versions[-1]
+            spec["latest_version"] = sorted_versions[-1]["version"]
     return updated
 
 
