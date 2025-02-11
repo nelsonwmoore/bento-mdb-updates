@@ -77,10 +77,15 @@ def make_model_cde_spec(model: Model) -> ModelCDESpec:
     return cde_spec
 
 
-def save_cde_spec_to_yaml(cde_spec: ModelCDESpec, yaml_file: Path) -> None:
-    """Save CDE spec to YAML file."""
+def dump_to_yaml(py_object: object, yaml_file: Path) -> None:
+    """Safe dump Python object to YAML file."""
     with Path(yaml_file).open(mode="w", encoding="utf-8") as f:
-        yaml.dump(cde_spec, f)
+        yaml.safe_dump(
+            py_object,
+            f,
+            sort_keys=False,
+            default_flow_style=False,
+        )
 
 
 def add_cde_pvs_to_model_cde_spec(
