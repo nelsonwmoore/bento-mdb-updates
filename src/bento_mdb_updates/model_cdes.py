@@ -10,6 +10,7 @@ import yaml
 from bento_mdf.mdf.reader import MDFReader
 
 if TYPE_CHECKING:
+    from bento_meta.mdb.mdb import MDB
     from bento_meta.model import Model
 
     from bento_mdb_updates.clients import CADSRClient, NCItClient
@@ -26,12 +27,46 @@ def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
             raise ValueError(msg) from exc
 
 
+def get_yaml_files_from_spec(
+    model_spec: ModelSpec,
+    version: str | None = None,
+) -> list[str]:
+    """Get YAML file urls from model spec for a given version."""
+    if not version:
+        version = model_spec["latest_version"]
+    repo = model_spec.get("repository")
+    mdf_directory = model_spec.get("mdf_directory", "")
+    mdf_files = model_spec.get("mdf_files", [])
+
+    if not repo:
+        msg = "Model spec must have a repository."
+        raise ValueError(msg)
+    if not mdf_files:
+        msg = "Model spec must have file names for MDF files."
+
+    version_entry = next(
+        (v for v in model_spec.get("versions", []) if v["version"] == version),
+        None,
+    )
+    if not version_entry:
+        msg = f"Version {version} not found in model spec."
+        raise ValueError(msg)
+
+    tag = version_entry.get("tag", version)
+
+    base_url = f"https://raw.githubusercontent.com/{repo}/{tag}/{mdf_directory}"
+    return [f"{base_url}/{file}" for file in mdf_files]
+
+
 def make_model(
     model_spec: ModelSpec,
+    version: str | None = None,
 ) -> Model:
-    """Get a Model object from CRDC model spec."""
-    mdf = MDFReader(*model_spec["yaml_file_names"], handle=model_spec["handle"])
-    mdf.model.version = model_spec["version"]
+    """Get a Model object from model spec and version. Default to latest version."""
+    yaml_files = get_yaml_files_from_spec(model_spec, version)
+    mdf = MDFReader(*yaml_files)
+    if version:
+        mdf.model.version = version
     return mdf.model
 
 
@@ -39,7 +74,7 @@ def count_model_cdes(model: Model) -> int:
     """Count CDEs in a model."""
     count = 0
     for term_key in model.terms:
-        if "cadsr" not in term_key[1].lower():
+        if "cadsr" in term_key[1].lower():
             count += 1
     return count
 
@@ -155,3 +190,29 @@ def load_cdes_from_model_spec(spec: ModelSpec) -> ModelCDESpec:
         except yaml.YAMLError as exc:
             msg = f"Error parsing YAML file {path}: {exc}"
             raise ValueError(msg) from exc
+
+
+def compare_model_specs_to_mdb(
+    model_specs: dict[str, ModelSpec],
+    mdb: MDB,
+    *,
+    datahub_only: bool = False,
+) -> dict[str, list[str]]:
+    """Get model versions from Model Spec yaml that aren't in an MDB."""
+    mdb_models = mdb.models
+    spec_models = {
+        model: [
+            v["version"]
+            for v in spec["versions"]
+            if not v.get("ignore", False)
+            and (not datahub_only or spec.get("in_data_hub", False))
+        ]
+        for model, spec in model_specs.items()
+    }
+    logging.info("MDB models=%s", mdb_models)
+    logging.info("Spec models=%s", spec_models)
+    return {
+        model: sorted(set(versions) - set(mdb_models.get(model, [])))
+        for model, versions in spec_models.items()
+        if set(versions) - set(mdb_models.get(model, []))
+    }

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Renumber changeset ids for all changesets in changelog.
 

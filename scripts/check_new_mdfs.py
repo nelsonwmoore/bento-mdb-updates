@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Check MDF repos for MDFs not in MDB. If found, add to models yaml."""
 
 from __future__ import annotations
