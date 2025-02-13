@@ -1,0 +1,60 @@
+name: liquibase-update
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - ".github/data/output/model_changelogs/**"
+  workflow_dispatch:
+    inputs:
+      changeLogFile:
+        description: "Path to the Liquibase changelog file to update"
+        required: false
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.changed-files.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: dev
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: changed-files
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Get list of added/modified files
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} -- ".github/data/output/model_changelogs/" | grep -E "\.xml$")
+            # Convert to JSON array
+            JSON_ARRAY=$(echo "$CHANGED_FILES" | jq -R -s -c 'split("\n")[:-1]')
+            echo "matrix={\"include\":$(echo "$JSON_ARRAY" | jq -c '[.[] | {changelogFile: .}]')}" >> $GITHUB_OUTPUT
+          else
+            # Handle manual trigger
+            echo "matrix={\"include\":[{\"changelogFile\":\"${{ github.event.inputs.changeLogFile }}\"}]}" >> $GITHUB_OUTPUT
+          fi
+
+  liquibase-update:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.matrix != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: dev
+
+      - name: Run liquibase update for each file
+        uses: liquibase-github-actions/update@v4.31.0
+        with:
+          changelogFile: ${{ matrix.changeLogFile }}
+          url: ${{ secrets.NEO4J_MDB_URI }}
+          username: ${{ secrets.NEO4J_MDB_USER }}
+          password: ${{ secrets.NEO4J_MDB_PASS }}
+      
