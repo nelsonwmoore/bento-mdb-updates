@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 @click.command()
 @click.option(
+    "-m",
     "--model_handle",
     required=True,
     type=str,
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
     help="CRDC Model Handle (e.g. 'GDC')",
 )
 @click.option(
+    "-f",
     "--mdf_files",
     required=True,
     type=str,
@@ -35,43 +37,50 @@ logger = logging.getLogger(__name__)
     help="path or URL to MDF YAML file(s)",
 )
 @click.option(
+    "-o",
     "--output_file_path",
-    required=True,
+    required=False,
     type=click.Path(),
-    prompt=True,
+    prompt=False,
     help="File path for output changelog",
 )
 @click.option(
+    "-a",
     "--author",
     required=True,
     type=str,
     help="Author for changeset",
 )
 @click.option(
+    "-c",
     "--_commit",
     required=False,
     type=str,
     help="Commit string",
 )
 @click.option(
+    "-r",
     "--add_rollback",
     required=False,
     type=bool,
     help="Add cypher stmts with rollback to changesets",
 )
 @click.option(
+    "-v",
     "--model_version",
     required=False,
     type=str,
     help="Manually set model version (e.g., 1.2.3) if not included in MDF.",
 )
 @click.option(
+    "-l",
     "--latest_version",
     required=False,
     type=bool,
     help="Is this the latest data model version?",
 )
 @click.option(
+    "-t",
     "--terms_only",
     required=False,
     type=bool,
@@ -109,6 +118,10 @@ def main(
         latest_version=latest_version,
     )
     logger.info("Changelog converted from MDF successfully")
+
+    if not output_file_path:
+        output_dir = Path().cwd() / f"data/output/model_changelogs/{model_handle}"
+        output_file_path = output_dir / f"{model_handle}_changelog_{model_version}.xml"
 
     changelog.save_to_file(str(Path(output_file_path)), encoding="UTF-8")
     logger.info("Changelog saved at: {output_file_path}")

@@ -1,69 +1,75 @@
+#!/usr/bin/env python3
 """Script to process CDEs that annotate CRDC data model entities."""
 
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from pathlib import Path
 
-from prefect import flow
-from pytz import timezone
+import click
+import dotenv
+from bento_mdf.mdf import MDF
 
 from bento_mdb_updates.clients import CADSRClient, NCItClient
 from bento_mdb_updates.model_cdes import (
     add_cde_pvs_to_model_cde_spec,
     add_ncit_synonyms_to_model_cde_spec,
     count_model_cdes,
-    load_model_specs_from_yaml,
-    make_model,
+    dump_to_yaml,
     make_model_cde_spec,
-    save_cde_spec_to_yaml,
 )
 
-LOG_FILE = (
-    Path().cwd()
-    / "logs"
-    / f"cdepv_syns_{datetime.now(tz=timezone('UTC')).strftime('%Y%m%d_%H%M%S')}.log"
+dotenv.load_dotenv(Path("config/.env"), override=True)
+
+
+@click.command()
+@click.option(
+    "-m",
+    "--model_handle",
+    required=True,
+    type=str,
+    prompt=True,
+    help="CRDC Model Handle (e.g. 'GDC')",
 )
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
+@click.option(
+    "-v",
+    "--model_version",
+    required=False,
+    type=str,
+    help="Manually set model version (e.g., 1.2.3) if not included in MDF.",
 )
-logger = logging.getLogger(__name__)
-
-
-@flow
-def main() -> None:
+@click.option(
+    "-f",
+    "--mdf_files",
+    required=True,
+    type=str,
+    prompt=True,
+    multiple=True,
+    help="path or URL to MDF YAML file(s)",
+)
+def main(model_handle: str, model_version: str, mdf_files: str | list[str]) -> None:
     """Do stuff."""
-    crdc_models_yml = Path().cwd() / "src/crdc_models.yml"
-    model_specs = load_model_specs_from_yaml(crdc_models_yml)
-    ncit_client = NCItClient(Path("src/NCIt_Metathesaurus_Mapping_202408.txt"))
+    ncit_client = NCItClient()
     cadsr_client = CADSRClient()
 
-    for model, spec in model_specs.items():
-        # get CDEs from model files
-        logging.info(
-            "Getting CDEs from %s v%s MDFs...",
-            model,
-            spec["version"],
-        )
-        model = make_model(spec)
-        (f"{model.handle} v{model.version} has {count_model_cdes(model)} CDEs.")
-        model_cde_spec = make_model_cde_spec(model)
+    # get CDEs from model files
+    logging.info("Getting CDEs from %s v%s MDFs...", model_handle, model_version)
+    mdf = MDF(*mdf_files, handle=model_handle, raise_error=True)
+    model = mdf.model
+    (f"{model_handle} v{model_version} has {count_model_cdes(model)} CDEs.")
+    model_cde_spec = make_model_cde_spec(model)
 
-        add_cde_pvs_to_model_cde_spec(model_cde_spec, cadsr_client)
-        add_ncit_synonyms_to_model_cde_spec(model_cde_spec, ncit_client)
+    add_cde_pvs_to_model_cde_spec(model_cde_spec, cadsr_client)
+    add_ncit_synonyms_to_model_cde_spec(model_cde_spec, ncit_client)
 
-        # save cde spec to yaml
-        output_dir = Path().cwd() / "output/model_cdes"
-        model_cdes_yml = (
-            output_dir / model.handle / f"{model.handle}_{model.version}_cdes.yml"
-        )
+    # save cde spec to yaml
+    output_dir = Path().cwd() / "data/output/model_cde_pvs"
+    model_cdes_yml = (
+        output_dir / model_handle / f"{model_handle}_{model_version}_cdes.yml"
+    )
 
-        save_cde_spec_to_yaml(model_cde_spec, model_cdes_yml)
+    dump_to_yaml(model_cde_spec, model_cdes_yml)
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameters

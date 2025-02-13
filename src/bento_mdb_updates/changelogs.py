@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from string import Template
 from typing import TYPE_CHECKING
 
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from bento_mdb_updates.datatypes import AnnotationSpec, ModelCDESpec
 
 logger = logging.getLogger(__name__)
+DEFAULT_COMMIT = f"CDEPV-{datetime.today().strftime('%Y%m%d')}"
 
 
 def cypherize_entity(entity: Entity) -> N:
@@ -259,7 +261,7 @@ def convert_annotation_to_changesets(
         },
     )
     cypher_cde_vs = cypherize_entity(cde_vs)
-    vs_commit = cypher_cde_vs.props.pop("_commit")
+    vs_commit = cypher_cde_vs.props.pop("_commit", DEFAULT_COMMIT)
     statements.append(Statement(Merge(cypher_cde_vs), OnCreateSet(vs_commit)))
     # load entities from annotation
     # need terms for each pv in value set and synonyms for each of those pvs
@@ -273,7 +275,7 @@ def convert_annotation_to_changesets(
         pv_term._commit = _commit  # noqa: SLF001
         escape_quotes_in_attr(pv_term)
         cypher_pv_term = cypherize_entity(pv_term)
-        term_commit = cypher_pv_term.props.pop("_commit")
+        term_commit = cypher_pv_term.props.pop("_commit", DEFAULT_COMMIT)
         statements.append(Statement(Merge(cypher_pv_term), OnCreateSet(term_commit)))
 
         # add relationship between cde value set & pv term(s)
@@ -289,7 +291,7 @@ def convert_annotation_to_changesets(
         # make concept for pv & its synonyms
         concept = Concept({"_commit": _commit, "nanoid": make_nanoid()})
         cypher_concept = cypherize_entity(concept)
-        concept_commit = cypher_concept.props.pop("_commit")
+        concept_commit = cypher_concept.props.pop("_commit", DEFAULT_COMMIT)
 
         # create statements for synonyms
         if synonyms:
@@ -314,7 +316,7 @@ def convert_annotation_to_changesets(
                 syn_term._commit = _commit  # noqa: SLF001
                 escape_quotes_in_attr(syn_term)
                 cypher_syn_term = cypherize_entity(syn_term)
-                syn_commit = cypher_syn_term.props.pop("_commit")
+                syn_commit = cypher_syn_term.props.pop("_commit", DEFAULT_COMMIT)
                 # add synonym term
                 statements.append(
                     Statement(Merge(cypher_syn_term), OnCreateSet(syn_commit)),
@@ -336,11 +338,12 @@ def convert_annotation_to_changesets(
     # create changesets for each statement
     cs_id = changeset_id
     for stmt in statements:
+        str_stmt = str(stmt).replace("\\'", "'")
         changesets.append(
             Changeset(
                 id=str(cs_id),
                 author=author,
-                change_type=CypherChange(text=str(stmt)),
+                change_type=CypherChange(text=str_stmt),
             ),
         )
         cs_id += 1
@@ -463,7 +466,7 @@ class ModelToChangelogConverter:
                 stmt = Statement(Merge(cypher_ent))
             # remove _commit prop of Term/VS cypher_ent for Merge
             else:
-                commit = cypher_ent.props.pop("_commit")
+                commit = cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
                 stmt = Statement(Merge(cypher_ent), OnCreateSet(commit))
             rollback = Statement("empty")
         else:
@@ -493,7 +496,7 @@ class ModelToChangelogConverter:
                 cypher_ent.label in ("term", "value_set")
                 and "_commit" in cypher_ent.props
             ):
-                cypher_ent.props.pop("_commit")
+                cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
             if cypher_ent.label == "property" and "_parent_handle" in cypher_ent.props:
                 cypher_ent.props.pop("_parent_handle")
         stmt_merge_trip = T(cypher_src.plain_var(), cypher_rel, cypher_dst.plain_var())

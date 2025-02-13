@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import yaml
-from bento_mdf.mdf.reader import MDFReader
 
 if TYPE_CHECKING:
     from bento_meta.mdb.mdb import MDB
@@ -56,18 +55,6 @@ def get_yaml_files_from_spec(
 
     base_url = f"https://raw.githubusercontent.com/{repo}/{tag}/{mdf_directory}"
     return [f"{base_url}/{file}" for file in mdf_files]
-
-
-def make_model(
-    model_spec: ModelSpec,
-    version: str | None = None,
-) -> Model:
-    """Get a Model object from model spec and version. Default to latest version."""
-    yaml_files = get_yaml_files_from_spec(model_spec, version)
-    mdf = MDFReader(*yaml_files)
-    if version:
-        mdf.model.version = version
-    return mdf.model
 
 
 def count_model_cdes(model: Model) -> int:
@@ -176,20 +163,17 @@ def add_ncit_synonyms_to_model_cde_spec(
         annotation["value_set"] = value_set
 
 
-def load_cdes_from_model_spec(spec: ModelSpec) -> ModelCDESpec:
+def load_model_cde_spec(model_handle: str, model_version: str) -> ModelCDESpec:
     """Load model cdes from spec."""
-    path = (
-        Path().cwd()
-        / "output/model_cdes"
-        / spec["handle"]
-        / f"{spec['handle']}_{spec['version']}_cdes.yml"
-    )
-    with path.open(mode="r", encoding="utf-8") as f:
+    cde_dir = Path().cwd() / "data/output/model_cde_pvs"
+    model_cdes_yml = cde_dir / model_handle / f"{model_handle}_{model_version}_cdes.yml"
+
+    with model_cdes_yml.open(mode="r", encoding="utf-8") as f:
         try:
             return yaml.load(f, Loader=yaml.FullLoader)  # noqa: S506
-        except yaml.YAMLError as exc:
-            msg = f"Error parsing YAML file {path}: {exc}"
-            raise ValueError(msg) from exc
+        except yaml.YAMLError as e:
+            msg = f"Error parsing YAML file {model_cdes_yml}: {e}"
+            raise ValueError(msg) from e
 
 
 def compare_model_specs_to_mdb(

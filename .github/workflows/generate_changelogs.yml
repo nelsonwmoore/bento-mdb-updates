@@ -113,21 +113,32 @@ jobs:
           --_commit="${{ github.sha }}" \
           --latest_version=True
 
-      # - name: Get Model PVs and Synonyms
-      #   run: |
-      #     python .github/scripts/get_pvs_and_synonyms.py \
-      #     # TODO: add other flags
+      - name: Get Model PVs and Synonyms
+        run: |
+          set -e
 
-      # - name: Make Model CDE Changelog
-      #   run: |
-      #     python .github/scripts/make_model_cde_changelog.py \
-      #     --model_specs_yaml "${{ github.event.inputs.models_yaml_path }}"
-      #     # TODO: add other flags
+          MDF_FILES_OPTIONS=""
+          for file in $(echo '${{ matrix.mdf_files }}' | jq -r '.[]'); do
+            MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
+          done
 
-      # - name: Commit Changelogs
-      #   run: |
-      #     git config --global user.name "GitHub Actions"
-      #     git config --global user.email "actions@github.com"
-      #     git add CHANGELOG.md
-      #     git commit -m "Update CHANGELOG.md"
-      #     git push
+          python .github/scripts/get_pvs_and_synonyms.py \
+          --model_handle="${{ matrix.model }}" \
+          --model_version="${{ matrix.version }}" \
+          $MDF_FILES_OPTIONS \
+
+      - name: Make Model CDE Changelog
+        run: |
+          python .github/scripts/make_model_cde_changelog.py \
+          --model_handle="${{ matrix.model }}" \
+          --model_version="${{ matrix.version }}"
+
+      - name: Commit Generated Files
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml
+          git add data/output/model_cde_pvs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cdes.yml
+          git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml
+          git commit -m "Add new files for ${{ matrix.model }} v${{ matrix.version }}"
+          git push

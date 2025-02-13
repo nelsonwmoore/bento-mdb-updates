@@ -117,8 +117,14 @@ class CADSRClient:
 class NCItClient:
     """Client for NCIt API."""
 
+    DEFAULT_NCIM_TSV = (
+        Path().cwd() / "data/source/NCIt/NCIt_Metathesaurus_Mapping_202408.txt"
+    )
+
     def __init__(self, ncim_tsv: Path | None = None) -> None:
         """Initialize client."""
+        if not ncim_tsv:
+            ncim_tsv = self.DEFAULT_NCIM_TSV
         self.ncim_mapping: dict = self.load_ncim_tsv_to_dict(ncim_tsv)
 
     def load_ncim_tsv_to_dict(self, ncim_tsv: Path | None = None) -> dict:
