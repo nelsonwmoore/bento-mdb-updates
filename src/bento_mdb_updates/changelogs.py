@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 DEFAULT_COMMIT = f"CDEPV-{datetime.today().strftime('%Y%m%d')}"
+DEFAULT_AUTHOR = "DEFAULT"
 
 
 def cypherize_entity(entity: Entity) -> N:
@@ -242,10 +243,7 @@ def convert_annotation_to_changesets(
     _commit: str | None = None,
 ) -> list[Changeset]:
     """Convert annotation to list of Liquibase Changesets."""
-    if (
-        annotation["entity"]["attrs"]["value_domain"] != "value_set"
-        and not annotation["entity"]["entity_has_enum"]
-    ):
+    if not annotation.get("value_set") or annotation.get("value_set") == []:
         return []
     statements = []
     changesets = []
@@ -360,8 +358,12 @@ def convert_model_cdes_to_changelog(
     """Convert model cde annotations with PVs and synonyms to Liquibase Changelog."""
     changelog = Changelog()
     changeset_id = 1
+    if not author:
+        author = DEFAULT_AUTHOR
+    if not _commit:
+        _commit = DEFAULT_COMMIT
     for annotation in tqdm(model_cdes["annotations"], desc="Annotations"):
-        msg = f"Annotation: {annotation['entity']['key']}"
+        msg = f"Annotation: {annotation['entity'].get('key', '')}"
         logging.info(msg)
         changesets = convert_annotation_to_changesets(
             annotation,
@@ -371,6 +373,7 @@ def convert_model_cdes_to_changelog(
         )
         if not changesets:
             continue
+        changeset_id += len(changesets)
         for changeset in tqdm(changesets, desc="Changesets", total=len(changesets)):
             changelog.add_changeset(changeset)
         del changesets  # garbage collection
@@ -456,25 +459,7 @@ class ModelToChangelogConverter:
             msg = f"Entity with attrs: {entity.get_attr_dict()} already added."
             logger.info(msg)
             return
-        escape_quotes_in_attr(entity)
-        reset_pg_ent_counter()
-        cypher_ent = cypherize_entity(entity)
-        if isinstance(entity, Property) and "_parent_handle" in cypher_ent.props:
-            cypher_ent.props.pop("_parent_handle")
-        if isinstance(entity, (Term, ValueSet, Concept)):
-            if "_commit" not in cypher_ent.props:
-                stmt = Statement(Merge(cypher_ent))
-            # remove _commit prop of Term/VS cypher_ent for Merge
-            else:
-                commit = cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
-                stmt = Statement(Merge(cypher_ent), OnCreateSet(commit))
-            rollback = Statement("empty")
-        else:
-            stmt = Statement(Create(cypher_ent))
-            rollback = Statement(
-                Match(cypher_ent),
-                DetachDelete(cypher_ent.plain_var()),
-            )
+        stmt, rollback = create_entity_cypher_stmt(entity)
         self.add_statement(stmt_type, stmt, rollback)
         self.added_entities.append(entity)
 
@@ -486,26 +471,8 @@ class ModelToChangelogConverter:
     ) -> None:
         """Generate cypher statement to create relationship from src to dst entity."""
         stmt_type = "add_rels"
-        reset_pg_ent_counter()
-        cypher_src = cypherize_entity(src)
-        cypher_dst = cypherize_entity(dst)
-        cypher_rel = R(Type=rel)
-        # remove _commit attr from Term and VS ents
-        for cypher_ent in (cypher_src, cypher_dst):
-            if (
-                cypher_ent.label in ("term", "value_set")
-                and "_commit" in cypher_ent.props
-            ):
-                cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
-            if cypher_ent.label == "property" and "_parent_handle" in cypher_ent.props:
-                cypher_ent.props.pop("_parent_handle")
-        stmt_merge_trip = T(cypher_src.plain_var(), cypher_rel, cypher_dst.plain_var())
-        rlbk_match_trip = T(cypher_src, cypher_rel, cypher_dst)
-        self.add_statement(
-            stmt_type,
-            stmt=Statement(Match(cypher_src, cypher_dst), Merge(stmt_merge_trip)),
-            rollback=Statement(Match(rlbk_match_trip), Delete(cypher_rel.plain_var())),
-        )
+        stmt, rollback = create_relationship_cypher_stmt(src, rel, dst)
+        self.add_statement(stmt_type, stmt, rollback)
 
     def process_tags(self, entity: Entity) -> None:
         """Generate cypher statements to create/merge an entity's tag attributes."""
@@ -694,3 +661,53 @@ class ModelToChangelogConverter:
                 changeset_id += 1
 
         return changelog
+
+
+def create_entity_cypher_stmt(
+    entity: Entity,
+) -> tuple[Statement, Statement]:
+    """Generate cypher statement to create or merge Entity."""
+    escape_quotes_in_attr(entity)
+    reset_pg_ent_counter()
+    cypher_ent = cypherize_entity(entity)
+    if isinstance(entity, Property) and "_parent_handle" in cypher_ent.props:
+        cypher_ent.props.pop("_parent_handle")
+    if isinstance(entity, (Term, ValueSet, Concept)):
+        if "_commit" not in cypher_ent.props:
+            stmt = Statement(Merge(cypher_ent))
+        # remove _commit prop of Term/VS cypher_ent for Merge
+        else:
+            commit = cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
+            stmt = Statement(Merge(cypher_ent), OnCreateSet(commit))
+        rollback = Statement("empty")
+    else:
+        stmt = Statement(Create(cypher_ent))
+        rollback = Statement(
+            Match(cypher_ent),
+            DetachDelete(cypher_ent.plain_var()),
+        )
+    return stmt, rollback
+
+
+def create_relationship_cypher_stmt(
+    src: Entity,
+    rel: str,
+    dst: Entity,
+) -> tuple[Statement, Statement]:
+    """Generate cypher statement to create relationship from src to dst entity."""
+    reset_pg_ent_counter()
+    cypher_src = cypherize_entity(src)
+    cypher_dst = cypherize_entity(dst)
+    cypher_rel = R(Type=rel)
+    # remove _commit attr from Term and VS ents
+    for cypher_ent in (cypher_src, cypher_dst):
+        if cypher_ent.label in ("term", "value_set") and "_commit" in cypher_ent.props:
+            cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
+        if cypher_ent.label == "property" and "_parent_handle" in cypher_ent.props:
+            cypher_ent.props.pop("_parent_handle")
+    stmt_merge_trip = T(cypher_src.plain_var(), cypher_rel, cypher_dst.plain_var())
+    rlbk_match_trip = T(cypher_src, cypher_rel, cypher_dst)
+    return (
+        Statement(Match(cypher_src, cypher_dst), Merge(stmt_merge_trip)),
+        Statement(Match(rlbk_match_trip), Delete(cypher_rel.plain_var())),
+    )

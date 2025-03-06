@@ -3,30 +3,52 @@
 from __future__ import annotations
 
 import csv
+import datetime
+import io
 import logging
 import os
-import pickle
 import re
 import subprocess
+import zipfile
 from json import JSONDecodeError
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import requests
+import yaml
+
+from bento_mdb_updates.datatypes import AnnotationSpec
 
 if TYPE_CHECKING:
-    from bento_mdb_updates.datatypes import PermissibleValue
+    from bento_mdb_updates.datatypes import MDBCDESpec, PermissibleValue
 
-CADSR_API_CACHE = Path().cwd() / "cadsr_api_cache.pkl"
 RESPONSE_200 = 200
+DEFAULT_TIMEOUT = 30
+
+SYNC_STATUS_YAML = Path("config/sync_status.yml")
+
+
+def get_last_sync_date(
+    source: str,
+    yaml_path: Path = SYNC_STATUS_YAML,
+) -> datetime.datetime:
+    """Get last updated date from sync_status.yml."""
+    if not yaml_path.exists():
+        msg = f"File {yaml_path} does not exist."
+        raise FileNotFoundError(msg)
+    with yaml_path.open(mode="r", encoding="utf-8") as f:
+        sync_status = yaml.safe_load(f)
+    return datetime.datetime.strptime(
+        sync_status[source]["last_updated"],
+        sync_status[source]["date_format"],
+    ).replace(tzinfo=datetime.timezone.utc)
 
 
 class CADSRClient:
     """Client for caDSR II API."""
 
-    def __init__(self, cache: dict | None = None) -> None:
+    def __init__(self) -> None:
         """Initialize client."""
-        self.cache = cache
 
     def get_valueset_from_json(
         self,
@@ -35,7 +57,15 @@ class CADSRClient:
         """Get value set from JSON response."""
         try:
             vs = []
-            for pv in json_response["DataElement"]["ValueDomain"]["PermissibleValues"]:
+            cde_pvs = json_response["DataElement"]["ValueDomain"]["PermissibleValues"]
+            if not cde_pvs:
+                logging.warning(
+                    "No permissible values found for CDE %s v%s",
+                    json_response["DataElement"]["publicId"],
+                    json_response["DataElement"]["version"],
+                )
+                return vs
+            for pv in cde_pvs:
                 pv_dict = {
                     "value": pv["value"],
                     "origin_version": pv["ValueMeaning"]["version"],
@@ -78,17 +108,13 @@ class CADSRClient:
             else ""
         )
         cde_id_ver_str = f"{cde_id}{ver_str}"
-        if self.cache and cde_id_ver_str in self.cache:
-            return self.cache[cde_id_ver_str]
         url = f"https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/{cde_id_ver_str}"
         headers = {"accept": "application/json"}
         try:
-            response = requests.get(url, timeout=60, headers=headers)
+            response = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=headers)
             response.raise_for_status()
             json_response = response.json()
             value_set = self.get_valueset_from_json(json_response)
-            if self.cache:
-                self.cache[cde_id_ver_str] = value_set
         except requests.RequestException as e:
             msg = f"HTTP request for entity {entity_key} failed: {e}\nurl: {url}"
             logging.exception(msg)
@@ -100,39 +126,133 @@ class CADSRClient:
         else:
             return value_set
 
-    def load_cadsr_api_cache(self) -> dict:
-        """Load cached api responses from pickle file."""
-        try:
-            with CADSR_API_CACHE.open("rb") as f:
-                return pickle.load(f)
-        except FileNotFoundError:
-            return {}
-
-    def save_cadsr_api_cache(self) -> None:
-        """Save cached api responses to pickle file."""
-        with CADSR_API_CACHE.open("wb") as f:
-            pickle.dump(self.cache, f)
+    def check_cdes_against_mdb(
+        self,
+        mdb_cdes: list[MDBCDESpec],
+    ) -> list[AnnotationSpec]:
+        """For MDB CDEs with PVs, check caDSR for new PVs."""
+        result = []
+        for cde in mdb_cdes:
+            mdb_pvs = [pv["value"] for pv in cde["permissibleValues"]]
+            cadsr_pvs = self.fetch_cde_valueset(
+                cde_id=cde["CDECode"],
+                cde_version=cde.get("CDEVersion"),
+            )
+            if not cadsr_pvs:
+                logging.exception(
+                    "Error fetching PVs from caDSR for %sv%s",
+                    cde["CDECode"],
+                    cde.get("CDEVersion"),
+                )
+            annotation_spec: AnnotationSpec = {
+                "entity": {},
+                "annotation": {
+                    "key": (cde["CDEFullName"], cde["CDEOrigin"]),
+                    "attrs": {
+                        "origin_id": cde["CDECode"],
+                        "origin_version": cde.get("CDEVersion"),
+                        "origin_name": cde["CDEOrigin"],
+                        "value": cde["CDEFullName"],
+                    },
+                },
+                "value_set": [],
+            }
+            update_annotation = False
+            for pv in cadsr_pvs:
+                if not pv:
+                    logging.exception(
+                        "PVs from caDSR for %sv%s are null",
+                        cde["CDECode"],
+                        cde.get("CDEVersion"),
+                    )
+                    continue
+                if pv["value"] in mdb_pvs:
+                    continue
+                logging.info("New PV found: %s", pv["value"])
+                update_annotation = True
+                annotation_spec["value_set"].append(pv)
+            if not update_annotation:
+                continue
+            result.append(annotation_spec)
+        return result
 
 
 class NCItClient:
     """Client for NCIt API."""
 
-    DEFAULT_NCIM_TSV = (
-        Path().cwd() / "data/source/NCIt/NCIt_Metathesaurus_Mapping_202408.txt"
+    DEFAULT_NCIM_TSV = Path().cwd() / "data/source/NCIt/NCIt_Metathesaurus_Mapping.txt"
+    DEFAULT_NCIM_README_URL = (
+        "https://evs.nci.nih.gov/ftp1/Mappings/NCIt_Metathesaurus_Mapping.README.txt"
     )
+    DEFAULT_NCIM_ZIP_URL = (
+        "https://evs.nci.nih.gov/ftp1/Mappings/NCIt_Metathesaurus_Mapping.txt.zip"
+    )
+    SOURCE_KEY = "NCIt"
+    DATE_FMT = "%Y%m"
 
-    def __init__(self, ncim_tsv: Path | None = None) -> None:
+    def __init__(
+        self,
+        ncim_tsv: Path | None = None,
+        readme_url: str | None = None,
+        zip_url: str | None = None,
+    ) -> None:
         """Initialize client."""
+        self.readme_url = readme_url or self.DEFAULT_NCIM_README_URL
+        self.zip_url = zip_url or self.DEFAULT_NCIM_ZIP_URL
         if not ncim_tsv:
             ncim_tsv = self.DEFAULT_NCIM_TSV
         self.ncim_mapping: dict = self.load_ncim_tsv_to_dict(ncim_tsv)
 
-    def load_ncim_tsv_to_dict(self, ncim_tsv: Path | None = None) -> dict:
+    def get_readme_date(self) -> datetime.datetime | None:
+        """Fetch README file at self.readme_url and return the latest update date."""
+        if not self.readme_url:
+            msg = "readme_url is not set"
+            raise ValueError(msg)
+
+        response = requests.get(self.readme_url, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+
+        match = re.match(r"README (\d{6})", response.text.splitlines()[0].strip())
+        return (
+            datetime.datetime.strptime(
+                match.group(1),
+                self.DATE_FMT,
+            ).replace(tzinfo=datetime.timezone.utc)
+            if match
+            else None
+        )
+
+    def download_and_extract_tsv(self, save_path: Path | None = None) -> dict:
+        """Download and extract NCIt mappings TSV file from self.zip_url."""
+        if not self.zip_url:
+            msg = "zip_url is not set"
+            raise ValueError(msg)
+        response = requests.get(self.zip_url, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+
+        with zipfile.ZipFile(io.BytesIO(response.content), "r") as zip_ref:
+            tsv_filename = self.DEFAULT_NCIM_TSV.name
+            with zip_ref.open(tsv_filename) as f:
+                tsv_content = f.read()
+                if save_path:
+                    with save_path.open("wb") as save_file:
+                        save_file.write(tsv_content)
+
+                return self.load_ncim_tsv_to_dict(f)
+
+    def load_ncim_tsv_to_dict(
+        self,
+        ncim_tsv: Path | io.TextIOWrapper | None = None,
+    ) -> dict:
         """Load NCIm TSV file to dict."""
         if not ncim_tsv:
             return {}
         ncim = {}
-        with ncim_tsv.open(mode="r", encoding="utf-8") as f:
+        if isinstance(ncim_tsv, Path):
+            file = ncim_tsv.open(mode="r", encoding="utf-8")
+        else:
+            file = io.TextIOWrapper(ncim_tsv, encoding="utf-8")
+        with file as f:
             reader = csv.reader(f, delimiter="\t")
             for row in reader:
                 nci_code = row[2]
@@ -148,6 +268,65 @@ class NCItClient:
                     ncim[nci_code] = [syn_attrs]
         return ncim
 
+    def check_ncit_for_updated_mappings(self) -> bool:
+        """Check NCIt for new mappings."""
+        latest = self.get_readme_date()
+        last = get_last_sync_date(self.SOURCE_KEY)
+        if not latest or latest <= last:
+            logging.info("No new mappings to sync.")
+            return False
+        logging.info("New mappings with date %s found. Syncing...", latest)
+        self.ncim_mapping = self.download_and_extract_tsv()
+        return True
+
+    def check_synonyms_against_mdb(
+        self,
+        mdb_cdes: list[MDBCDESpec],
+    ) -> list[AnnotationSpec]:
+        """For MDB CDEs with PVs, check NCIt for new PV synonyms."""
+        result = []
+        for cde_spec in mdb_cdes:
+            annotation_spec: AnnotationSpec = {
+                "entity": {},
+                "annotation": {
+                    "key": (cde_spec["CDEFullName"], cde_spec["CDEOrigin"]),
+                    "attrs": {
+                        "origin_id": cde_spec["CDECode"],
+                        "origin_version": cde_spec.get("CDEVersion"),
+                        "origin_name": cde_spec["CDEOrigin"],
+                        "value": cde_spec["CDEFullName"],
+                    },
+                },
+                "value_set": [],
+            }
+            for pv in cde_spec["permissibleValues"]:
+                mdb_synonyms = pv.get("synonyms", [])
+                mdb_synonyms_frozen = {frozenset(syn.items()) for syn in mdb_synonyms}
+                pv_ncit_codes = [
+                    syn.get("origin_id")
+                    for syn in mdb_synonyms
+                    if syn.get("origin_name") in ["NCIt", "NCIm"]
+                ]
+                update_annotation = False
+                synonyms_to_add = []
+                for code in pv_ncit_codes:
+                    if not code or code not in self.ncim_mapping:
+                        continue
+                    ncim_synonyms = self.ncim_mapping[code]
+                    for ncim_syn in ncim_synonyms:
+                        ncim_syn_frozen = frozenset(ncim_syn.items())
+                        if ncim_syn_frozen in mdb_synonyms_frozen:
+                            continue
+                        logging.info("New synonym found: %s", ncim_syn["value"])
+                        update_annotation = True
+                        synonyms_to_add.append(ncim_syn)
+                if not update_annotation:
+                    continue
+                pv["synonyms"].extend(synonyms_to_add)
+                annotation_spec["value_set"].append(pv)
+            result.append(annotation_spec)
+        return result
+
 
 class GitHubClient:
     """Client to interact with GitHub API."""
@@ -162,7 +341,7 @@ class GitHubClient:
         """Query GitHub API for tags on a given repository."""
         url = f"{self.BASE_URL}/repos/{repo}/tags"
         headers = {"Authorization": f"token {self.github_token}"}
-        response = requests.get(url, headers=headers, timeout=30)
+        response = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
         if response.status_code != RESPONSE_200:
             msg = f"Failed to get tags for repo {repo}: {response.status_code}"
             logging.error(msg)

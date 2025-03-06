@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from bento_meta.model import Model
 
     from bento_mdb_updates.clients import CADSRClient, NCItClient
-    from bento_mdb_updates.datatypes import ModelCDESpec, ModelSpec
+    from bento_mdb_updates.datatypes import MDBCDESpec, ModelCDESpec, ModelSpec
 
 
 def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
@@ -117,11 +117,6 @@ def add_cde_pvs_to_model_cde_spec(
     """Add CDE PVs to a ModelCDESpec."""
     logging.info("Getting CDE value sets from caDSR...")
     for annotation in cde_spec["annotations"]:
-        if (
-            annotation["entity"]["attrs"]["value_domain"] != "value_set"
-            and not annotation["entity"]["entity_has_enum"]
-        ):
-            continue
         cde_id = annotation["annotation"]["attrs"].get("origin_id")
         cde_version = annotation["annotation"]["attrs"].get("origin_version")
         entity_key = str(annotation["entity"]["key"])
@@ -142,23 +137,17 @@ def add_ncit_synonyms_to_model_cde_spec(
     """Add NCIt synonyms to a ModelCDESpec."""
     logging.info("Getting synonyms from NCIt...")
     for annotation in cde_spec["annotations"]:
-        if (
-            annotation["entity"]["attrs"]["value_domain"] != "value_set"
-            and not annotation["entity"]["entity_has_enum"]
-        ):
-            continue
-        value_set = annotation.get("value_set")
-        if not value_set:
-            continue
+        value_set = annotation.get("value_set", [])
         for pv in value_set:
             if pv is None:
                 continue
             ncit_concept_codes = pv["ncit_concept_codes"]
             for code in ncit_concept_codes:
-                if code and code in ncit_client.ncim_mapping:
-                    syn_dicts = ncit_client.ncim_mapping[code]
-                    for syn_attrs in syn_dicts:
-                        pv["synonyms"].append(syn_attrs)
+                if not code or code not in ncit_client.ncim_mapping:
+                    continue
+                syn_dicts = ncit_client.ncim_mapping[code]
+                for syn_attrs in syn_dicts:
+                    pv["synonyms"].append(syn_attrs)
 
         annotation["value_set"] = value_set
 
@@ -200,3 +189,32 @@ def compare_model_specs_to_mdb(
         for model, versions in spec_models.items()
         if set(versions) - set(mdb_models.get(model, []))
     }
+
+
+def get_cdes_from_mdb(mdb: MDB) -> list[MDBCDESpec]:
+    """Get CDEs, CDE PVs, PV Synonyms mapped by NCIt from an MDB."""
+    qry = (
+        "MATCH (cde:term) WHERE toLower(cde.origin_name) CONTAINS 'cadsr' WITH cde "
+        "OPTIONAL MATCH (vs:value_set {handle: cde.origin_id + '|' + "
+        "COALESCE(cde.origin_version, '')})-[:has_term]->(pv:term) "
+        "OPTIONAL MATCH (ent)-[:has_property]->(p:property)-[:has_concept]->(:concept)"
+        "<-[:represents]-(cde) WHERE p.model IS NOT NULL AND p.version IS NOT NULL "
+        "WITH cde, pv, COLLECT(DISTINCT {model: p.model, version: p.version, "
+        "property: ent.handle + '.' + p.handle}) AS models "
+        "WHERE pv IS NOT NULL "
+        "OPTIONAL MATCH (pv)-[:represents]->(c:concept)<-[:represents]-(syn:term), "
+        "(c)-[:has_tag]->(g:tag {key: 'mapping_source'}) WHERE toLower(g.value) "
+        "IN ['ncim', 'ncit'] AND pv <> syn "
+        "WITH cde, models, pv, COLLECT(DISTINCT {value: syn.value, origin_id: "
+        "syn.origin_id, origin_name: syn.origin_name, origin_version: "
+        "syn.origin_version}) AS synonyms "
+        "WITH cde, models, COLLECT(DISTINCT {value: pv.value, origin_id: pv.origin_id, "
+        "origin_definition: pv.origin_definition, origin_version: pv.origin_version, "
+        "origin_name: pv.origin_name, synonyms: synonyms}) "
+        "AS permissibleValues "
+        "RETURN cde.origin_id AS CDECode, cde.origin_version AS CDEVersion, "
+        "cde.value AS CDEFullName, cde.origin_name AS CDEOrigin, "
+        "models, permissibleValues "
+        "LIMIT 1"  # <-- REMOVE LIMIT AFTER TESTING!
+    )
+    return mdb.get_with_statement(qry)  # type: ignore ReportReturnType

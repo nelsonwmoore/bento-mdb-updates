@@ -32,7 +32,7 @@ class PermissibleValue(TypedDict):
     origin_definition: str
     origin_version: str
     origin_name: str
-    ncit_concept_codes: str
+    ncit_concept_codes: list[str]
     synonyms: list[dict[str, str | None]]
 
 
@@ -50,3 +50,31 @@ class ModelCDESpec(TypedDict):
     handle: str
     version: str
     annotations: list[AnnotationSpec]
+
+
+class MDBModelSpec(TypedDict):
+    """MDB Model Spec."""
+
+    model: str
+    version: str
+    property: str
+
+
+class MDBSynSpec(TypedDict):
+    """MDB CDE Synonym Spec."""
+
+    value: str
+    origin_id: str | None
+    origin_name: str | None
+    origin_version: str | None
+
+
+class MDBCDESpec(TypedDict):
+    """MDB CDE Spec."""
+
+    CDECode: str
+    CDEVersion: str | None
+    CDEFullName: str
+    CDEOrigin: str
+    models: list[MDBModelSpec]
+    permissibleValues: list[PermissibleValue]
