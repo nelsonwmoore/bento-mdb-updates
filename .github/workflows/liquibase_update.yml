@@ -81,7 +81,7 @@ jobs:
     - name: Generate Permissible Values JSON
       id: generate-pv-json
       run: |
-        python get_pvs_json.py --model ${{ model }} --version ${{ version }} > ${{ model }}_${{ version }}_sts.json
+        python get_pvs_json --model ${{ model }} --version ${{ version }} > ${{ model }}_${{ version }}_sts.json
         echo "Generated report:"
         cat report.json
       
