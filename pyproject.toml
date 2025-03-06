@@ -18,3 +18,16 @@ dependencies = [
 
 [tool.uv.sources]
 minicypher = { git = "https://github.com/CBIIT/minicypher" }
+
+[project.scripts]
+generate_model_version_matrix = "scripts.generate_model_version_matrix:main"
+check_new_mdfs = "scripts.check_new_mdfs:main"
+get_pvs_and_synonyms = "scripts.get_pvs_and_synonyms:main"
+get_pvs_json = "scripts.get_pvs_json:main"
+make_model_cde_changelog = "scripts.make_model_cde_changelog:main"
+make_model_changelog = "scripts.make_model_changelog:main"
+update_mdb = "scripts.update_mdb:main"
+update_terms = "scripts.update_terms:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bento_mdb_updates", "scripts"]
