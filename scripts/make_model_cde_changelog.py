@@ -29,10 +29,29 @@ from bento_mdb_updates.model_cdes import (
     type=str,
     help="Manually set model version (e.g., 1.2.3) if not included in MDF.",
 )
-def main(model_handle: str, model_version: str) -> None:
+@click.option(
+    "-a",
+    "--author",
+    required=True,
+    type=str,
+    help="Author for changeset",
+)
+@click.option(
+    "-c",
+    "--_commit",
+    required=False,
+    type=str,
+    help="Commit string",
+)
+def main(
+    model_handle: str,
+    model_version: str,
+    author: str,
+    _commit: str | None = None,
+) -> None:
     """Do stuff."""
     model_cdes = load_model_cde_spec(model_handle, model_version)
-    changelog = convert_model_cdes_to_changelog(model_cdes)
+    changelog = convert_model_cdes_to_changelog(model_cdes, author, _commit)
     output_dir = Path().cwd() / f"data/output/model_changelogs/{model_handle}"
     cde_changelog = output_dir / f"{model_handle}_{model_version}_cde_changelog.xml"
     changelog.save_to_file(str(cde_changelog), encoding="UTF-8")
