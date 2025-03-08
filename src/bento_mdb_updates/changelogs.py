@@ -17,6 +17,8 @@ from minicypher.clauses import (
     Match,
     Merge,
     OnCreateSet,
+    OptionalMatch,
+    Where,
 )
 from minicypher.entities import G, N, P, R, T, _condition, _return
 from minicypher.functions import Func
@@ -240,12 +242,12 @@ def convert_annotation_to_changesets(
     annotation: AnnotationSpec,
     changeset_id: int,
     author: str | None = None,
-    _commit: str | None = None,
+    _commit: str | None = DEFAULT_COMMIT,
 ) -> list[Changeset]:
     """Convert annotation to list of Liquibase Changesets."""
     if not annotation.get("value_set") or annotation.get("value_set") == []:
         return []
-    statements = []
+    statements: list[Statement] = []
     changesets = []
     cde_attrs = annotation["annotation"]["attrs"]
     base_url = "https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/"
@@ -258,80 +260,35 @@ def convert_annotation_to_changesets(
             "_commit": _commit,
         },
     )
-    cypher_cde_vs = cypherize_entity(cde_vs)
-    vs_commit = cypher_cde_vs.props.pop("_commit", DEFAULT_COMMIT)
-    statements.append(Statement(Merge(cypher_cde_vs), OnCreateSet(vs_commit)))
-    # load entities from annotation
-    # need terms for each pv in value set and synonyms for each of those pvs
+    statements.append(create_entity_cypher_stmt(cde_vs)[0])
     for pv in tqdm(
         annotation["value_set"],
         desc="PVs",
         total=len(annotation["value_set"]),
     ):
+        if not pv:
+            continue
         synonyms = pv.pop("synonyms")  # separate synonyms dict from pv attrs
         pv_term = Term(pv)
         pv_term._commit = _commit  # noqa: SLF001
-        escape_quotes_in_attr(pv_term)
-        cypher_pv_term = cypherize_entity(pv_term)
-        term_commit = cypher_pv_term.props.pop("_commit", DEFAULT_COMMIT)
-        statements.append(Statement(Merge(cypher_pv_term), OnCreateSet(term_commit)))
-
-        # add relationship between cde value set & pv term(s)
-        cypher_rel = R(Type="has_term")
-        stmt_merge_trip = T(
-            cypher_cde_vs.plain_var(),
-            cypher_rel,
-            cypher_pv_term.plain_var(),
-        )
+        statements.append(create_entity_cypher_stmt(pv_term)[0])
         statements.append(
-            Statement(Match(cypher_cde_vs, cypher_pv_term), Merge(stmt_merge_trip)),
+            create_relationship_cypher_stmt(cde_vs, "has_term", pv_term)[0],
         )
-        # make concept for pv & its synonyms
-        concept = Concept({"_commit": _commit, "nanoid": make_nanoid()})
-        cypher_concept = cypherize_entity(concept)
-        concept_commit = cypher_concept.props.pop("_commit", DEFAULT_COMMIT)
-
-        # create statements for synonyms
-        if synonyms:
-            # add statement to create concept and link pv term to concept
+        if not synonyms:
+            continue
+        for syn_attrs in synonyms:
+            syn_term = Term(syn_attrs)
+            mapping_source = "caDSR" if syn_term.origin_name == "NCIt" else "NCIm"
+            statements.append(create_entity_cypher_stmt(syn_term)[0])
             statements.append(
-                Statement(Merge(cypher_concept), OnCreateSet(concept_commit)),
-            )
-            pv_concept_cypher_rel = R(Type="represents")
-            pv_stmt_merge_trip = T(
-                cypher_pv_term.plain_var(),
-                pv_concept_cypher_rel,
-                cypher_concept.plain_var(),
-            )
-            statements.append(
-                Statement(
-                    Match(cypher_pv_term, cypher_concept),
-                    Merge(pv_stmt_merge_trip),
+                generate_cypher_to_link_term_synonyms(
+                    pv_term,
+                    syn_term,
+                    mapping_source,
+                    _commit,
                 ),
             )
-            for syn_attrs in synonyms:
-                syn_term = Term(syn_attrs)
-                syn_term._commit = _commit  # noqa: SLF001
-                escape_quotes_in_attr(syn_term)
-                cypher_syn_term = cypherize_entity(syn_term)
-                syn_commit = cypher_syn_term.props.pop("_commit", DEFAULT_COMMIT)
-                # add synonym term
-                statements.append(
-                    Statement(Merge(cypher_syn_term), OnCreateSet(syn_commit)),
-                )
-                # link synonym term to pv term via concept
-                syn_cypher_rel = R(Type="represents")
-                syn_stmt_merge_trip = T(
-                    cypher_syn_term.plain_var(),
-                    syn_cypher_rel,
-                    cypher_concept.plain_var(),
-                )
-                statements.append(
-                    Statement(
-                        Match(cypher_syn_term, cypher_concept),
-                        Merge(syn_stmt_merge_trip),
-                    ),
-                )
 
     # create changesets for each statement
     cs_id = changeset_id
@@ -710,4 +667,94 @@ def create_relationship_cypher_stmt(
     return (
         Statement(Match(cypher_src, cypher_dst), Merge(stmt_merge_trip)),
         Statement(Match(rlbk_match_trip), Delete(cypher_rel.plain_var())),
+    )
+
+
+def generate_cypher_to_link_term_synonyms(
+    entity_1: Entity,
+    entity_2: Entity,
+    mapping_source: str,
+    _commit: str | None = DEFAULT_COMMIT,
+) -> Statement:
+    """
+    Generate cypher statement to link two terms via a Concept node.
+
+    Finds or creates one Concept node and ensures both Terms connected to it via the
+    'represents' relationship. If either Term is already connected to a Concept tagged
+    by the given mapping source, that concept is used instead.
+    """
+    reset_pg_ent_counter()
+    cypher_ent_1 = cypherize_entity(entity_1)
+    cypher_ent_2 = cypherize_entity(entity_2)
+    cypher_concept_1 = N(label="concept")
+    cypher_concept_2 = N(label="concept")
+    ent_1_trip = T(cypher_ent_1.plain_var(), R(Type="represents"), cypher_concept_1)
+    ent_2_trip = T(cypher_ent_2.plain_var(), R(Type="represents"), cypher_concept_2)
+    concept_tag_trip_1 = T(
+        cypher_concept_1,
+        R(Type="has_tag"),
+        N(
+            label="tag",
+            props={"key": "mapping_source", "value": mapping_source},
+        ),
+    )
+    concept_tag_trip_2 = T(
+        cypher_concept_2,
+        R(Type="has_tag"),
+        N(
+            label="tag",
+            props={"key": "mapping_source", "value": mapping_source},
+        ),
+    )
+    ent_1_concept_path = G(ent_1_trip, concept_tag_trip_1)
+    ent_2_concept_path = G(ent_2_trip, concept_tag_trip_2)
+    cypher_ent_1_var = cypher_ent_1.plain_var().pattern()
+    cypher_ent_2_var = cypher_ent_2.plain_var().pattern()
+    cypher_concept_1_var = cypher_concept_1.plain_var().pattern()
+    cypher_concept_2_var = cypher_concept_2.plain_var().pattern()
+    new_concept = N(label="concept", props={"_commit": _commit})
+    for cypher_ent in (cypher_ent_1, cypher_ent_2):
+        if "_commit" in cypher_ent.props:
+            cypher_ent.props.pop("_commit", DEFAULT_COMMIT)
+    return Statement(
+        Match(cypher_ent_1, cypher_ent_2),
+        Where(cypher_ent_1_var, "<>", cypher_ent_2_var, op=""),
+        With(cypher_ent_1_var, cypher_ent_2_var),
+        OptionalMatch(ent_1_concept_path),
+        With(cypher_ent_1_var, cypher_ent_2_var, cypher_concept_1_var),
+        "LIMIT 1",
+        OptionalMatch(ent_2_concept_path),
+        With(
+            cypher_ent_1_var,
+            cypher_ent_2_var,
+            cypher_concept_1_var,
+            cypher_concept_2_var,
+        ),
+        "LIMIT 1",
+        With(cypher_ent_1_var, cypher_ent_2_var),
+        ",",
+        f"{Case()}{When(cypher_concept_1_var)} IS NOT NULL THEN {cypher_concept_1_var}",
+        f"{When(cypher_concept_2_var)} IS NOT NULL THEN {cypher_concept_2_var}",
+        "ELSE NULL END AS existing_concept ",
+        ForEach(),
+        f"(_ IN {Case()}{When('existing_concept')} IS NOT NULL THEN [1] ELSE [] END |",
+        Merge(f"{cypher_ent_1_var}-[:represents]->(existing_concept)"),
+        Merge(f"{cypher_ent_2_var}-[:represents]->(existing_concept)"),
+        ")",
+        ForEach(),
+        f"(_ IN {Case()}{When('existing_concept')} IS NULL THEN [1] ELSE [] END |",
+        Create(new_concept),
+        Create(
+            T(
+                new_concept.plain_var(),
+                R("has_tag"),
+                N(
+                    label="tag",
+                    props={"key": "mapping_source", "value": mapping_source},
+                ),
+            ),
+        ),
+        Create(T(cypher_ent_1.plain_var(), R("represents"), new_concept.plain_var())),
+        Create(T(cypher_ent_2.plain_var(), R("represents"), new_concept.plain_var())),
+        ")",
     )

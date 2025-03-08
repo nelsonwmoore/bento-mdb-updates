@@ -268,11 +268,11 @@ class NCItClient:
                     ncim[nci_code] = [syn_attrs]
         return ncim
 
-    def check_ncit_for_updated_mappings(self) -> bool:
+    def check_ncit_for_updated_mappings(self, *, force_update: bool = False) -> bool:
         """Check NCIt for new mappings."""
         latest = self.get_readme_date()
         last = get_last_sync_date(self.SOURCE_KEY)
-        if not latest or latest <= last:
+        if not force_update and (not latest or latest <= last):
             logging.info("No new mappings to sync.")
             return False
         logging.info("New mappings with date %s found. Syncing...", latest)
