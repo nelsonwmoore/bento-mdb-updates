@@ -215,6 +215,5 @@ def get_cdes_from_mdb(mdb: MDB) -> list[MDBCDESpec]:
         "RETURN cde.origin_id AS CDECode, cde.origin_version AS CDEVersion, "
         "cde.value AS CDEFullName, cde.origin_name AS CDEOrigin, "
         "models, permissibleValues "
-        "LIMIT 1"  # <-- REMOVE LIMIT AFTER TESTING!
     )
     return mdb.get_with_statement(qry)  # type: ignore ReportReturnType

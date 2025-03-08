@@ -253,6 +253,8 @@ def convert_annotation_to_changesets(
     base_url = "https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/"
     cde_id = cde_attrs.get("origin_id", "")
     cde_ver = cde_attrs.get("origin_version", "")
+    if cde_ver is None:
+        cde_ver = ""
     cde_vs = ValueSet(
         {
             "url": f"{base_url}{cde_id}{f'?version={cde_ver}' if cde_ver else ''}",

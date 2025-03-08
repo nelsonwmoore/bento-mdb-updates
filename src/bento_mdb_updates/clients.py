@@ -15,15 +15,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import requests
+import stamina
 import yaml
-
-from bento_mdb_updates.datatypes import AnnotationSpec
+from tqdm import tqdm
 
 if TYPE_CHECKING:
-    from bento_mdb_updates.datatypes import MDBCDESpec, PermissibleValue
+    from bento_mdb_updates.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
+
 
 RESPONSE_200 = 200
 DEFAULT_TIMEOUT = 30
+DEFAULT_RETRIES = 3
+DEFAULT_RETRY_DELAY = 1.0
 
 SYNC_STATUS_YAML = Path("config/sync_status.yml")
 
@@ -95,6 +98,7 @@ class CADSRClient:
         else:
             return vs
 
+    @stamina.retry(on=requests.RequestException, attempts=DEFAULT_RETRIES)
     def fetch_cde_valueset(
         self,
         cde_id: str,
@@ -110,15 +114,12 @@ class CADSRClient:
         cde_id_ver_str = f"{cde_id}{ver_str}"
         url = f"https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/{cde_id_ver_str}"
         headers = {"accept": "application/json"}
+
         try:
             response = requests.get(url, timeout=DEFAULT_TIMEOUT, headers=headers)
             response.raise_for_status()
             json_response = response.json()
             value_set = self.get_valueset_from_json(json_response)
-        except requests.RequestException as e:
-            msg = f"HTTP request for entity {entity_key} failed: {e}\nurl: {url}"
-            logging.exception(msg)
-            return []
         except JSONDecodeError as e:
             msg = f"Failed to parse JSON response for entity {entity_key}: {e}\nurl: {url}"
             logging.exception(msg)
@@ -132,7 +133,7 @@ class CADSRClient:
     ) -> list[AnnotationSpec]:
         """For MDB CDEs with PVs, check caDSR for new PVs."""
         result = []
-        for cde in mdb_cdes:
+        for cde in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
             mdb_pvs = [pv["value"] for pv in cde["permissibleValues"]]
             cadsr_pvs = self.fetch_cde_valueset(
                 cde_id=cde["CDECode"],
