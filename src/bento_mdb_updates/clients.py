@@ -130,30 +130,31 @@ class CADSRClient:
     def check_cdes_against_mdb(
         self,
         mdb_cdes: list[MDBCDESpec],
-    ) -> list[AnnotationSpec]:
+    ) -> tuple[list[AnnotationSpec], set[tuple[str, str]]]:
         """For MDB CDEs with PVs, check caDSR for new PVs."""
         result = []
-        for cde in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
-            mdb_pvs = [pv["value"] for pv in cde["permissibleValues"]]
+        for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
+            affected_models = set()
+            mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
             cadsr_pvs = self.fetch_cde_valueset(
-                cde_id=cde["CDECode"],
-                cde_version=cde.get("CDEVersion"),
+                cde_id=cde_spec["CDECode"],
+                cde_version=cde_spec.get("CDEVersion"),
             )
             if not cadsr_pvs:
                 logging.exception(
                     "Error fetching PVs from caDSR for %sv%s",
-                    cde["CDECode"],
-                    cde.get("CDEVersion"),
+                    cde_spec["CDECode"],
+                    cde_spec.get("CDEVersion"),
                 )
             annotation_spec: AnnotationSpec = {
                 "entity": {},
                 "annotation": {
-                    "key": (cde["CDEFullName"], cde["CDEOrigin"]),
+                    "key": (cde_spec["CDEFullName"], cde_spec["CDEOrigin"]),
                     "attrs": {
-                        "origin_id": cde["CDECode"],
-                        "origin_version": cde.get("CDEVersion"),
-                        "origin_name": cde["CDEOrigin"],
-                        "value": cde["CDEFullName"],
+                        "origin_id": cde_spec["CDECode"],
+                        "origin_version": cde_spec.get("CDEVersion"),
+                        "origin_name": cde_spec["CDEOrigin"],
+                        "value": cde_spec["CDEFullName"],
                     },
                 },
                 "value_set": [],
@@ -163,8 +164,8 @@ class CADSRClient:
                 if not pv:
                     logging.exception(
                         "PVs from caDSR for %sv%s are null",
-                        cde["CDECode"],
-                        cde.get("CDEVersion"),
+                        cde_spec["CDECode"],
+                        cde_spec.get("CDEVersion"),
                     )
                     continue
                 if pv["value"] in mdb_pvs:
@@ -174,8 +175,10 @@ class CADSRClient:
                 annotation_spec["value_set"].append(pv)
             if not update_annotation:
                 continue
+            for model_spec in cde_spec["models"]:
+                affected_models.add((model_spec["model"], model_spec["version"]))
             result.append(annotation_spec)
-        return result
+        return result, affected_models
 
 
 class NCItClient:
@@ -283,10 +286,11 @@ class NCItClient:
     def check_synonyms_against_mdb(
         self,
         mdb_cdes: list[MDBCDESpec],
-    ) -> list[AnnotationSpec]:
+    ) -> tuple[list[AnnotationSpec], set[tuple[str, str]]]:
         """For MDB CDEs with PVs, check NCIt for new PV synonyms."""
         result = []
-        for cde_spec in mdb_cdes:
+        for cde_spec in tqdm(mdb_cdes, desc="Checking NCIt for new synonyms..."):
+            affected_models = set()
             annotation_spec: AnnotationSpec = {
                 "entity": {},
                 "annotation": {
@@ -325,8 +329,12 @@ class NCItClient:
                     continue
                 pv["synonyms"].extend(synonyms_to_add)
                 annotation_spec["value_set"].append(pv)
+            if not annotation_spec["value_set"]:
+                continue
+            for model_spec in cde_spec["models"]:
+                affected_models.add((model_spec["model"], model_spec["version"]))
             result.append(annotation_spec)
-        return result
+        return result, affected_models
 
 
 class GitHubClient:
