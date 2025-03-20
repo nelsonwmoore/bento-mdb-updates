@@ -51,8 +51,8 @@ def renumber_changelog_id(
 
 if __name__ == "__main__":
     PATH_TO_CHANGELOG = Path(
-        "C:/dev/projects/CBIIT/bento-mdb/changelogs/models/"
-        "CDS/CDS_6.0.0_cde_changelog.xml",
+        "C:/dev/projects/nelsonwmoore/bento-mdb-updates/data/output/model_changelogs/"
+        "CDS/CDS_6.0.2_cde_changelog.xml",
     )
     STARTING_ID = 1
 

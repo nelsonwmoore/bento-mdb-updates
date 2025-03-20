@@ -13,6 +13,7 @@ dependencies = [
     "minicypher",
     "packaging>=24.2",
     "prefect>=3.1.15",
+    "pyliquibase>=2.4.0",
     "pytest>=8.3.4",
     "stamina>=24.3.0",
 ]
@@ -32,3 +33,11 @@ update_terms = "scripts.update_terms:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bento_mdb_updates", "scripts"]
+
+[dependency-groups]
+dev = [
+    "docker>=7.1.0",
+    "pytest-cov>=6.0.0",
+    "pytest>=8.3.4",
+    "testcontainers>=4.9.2",
+]
