@@ -20,7 +20,7 @@ dotenv.load_dotenv(Path("config/.env"), override=True)
 
 
 def main() -> None:
-    """Do stuff."""
+    """Generate matrix with models/versions to be added to MDB."""
     model_specs_yaml = Path("config/mdb_models.yml")
     datahub_only = True
     model_specs = load_model_specs_from_yaml(model_specs_yaml)

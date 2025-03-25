@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from bento_mdb_updates.clients import CADSRClient, NCItClient
     from bento_mdb_updates.datatypes import MDBCDESpec, ModelCDESpec, ModelSpec
 
+logger = logging.getLogger(__name__)
+
 
 def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
     """Load model specs from YAML file."""
@@ -115,7 +117,7 @@ def add_cde_pvs_to_model_cde_spec(
     cadsr_client: CADSRClient,
 ) -> None:
     """Add CDE PVs to a ModelCDESpec."""
-    logging.info("Getting CDE value sets from caDSR...")
+    logger.info("Getting CDE value sets from caDSR...")
     for annotation in cde_spec["annotations"]:
         cde_id = annotation["annotation"]["attrs"].get("origin_id")
         cde_version = annotation["annotation"]["attrs"].get("origin_version")
@@ -135,7 +137,7 @@ def add_ncit_synonyms_to_model_cde_spec(
     ncit_client: NCItClient,
 ) -> None:
     """Add NCIt synonyms to a ModelCDESpec."""
-    logging.info("Getting synonyms from NCIt...")
+    logger.info("Getting synonyms from NCIt...")
     for annotation in cde_spec["annotations"]:
         value_set = annotation.get("value_set", [])
         for pv in value_set:
@@ -182,8 +184,8 @@ def compare_model_specs_to_mdb(
         ]
         for model, spec in model_specs.items()
     }
-    logging.info("MDB models=%s", mdb_models)
-    logging.info("Spec models=%s", spec_models)
+    logger.info("MDB models=%s", mdb_models)
+    logger.info("Spec models=%s", spec_models)
     return {
         model: sorted(set(versions) - set(mdb_models.get(model, [])))
         for model, versions in spec_models.items()

@@ -76,7 +76,7 @@ def main(model: str, version: str) -> None:
         {**item, "property": item.get("property", {}).get("handle", "")}
         for item in result
     ]
-    print(json.dumps(processed, indent=2))
+    print(json.dumps(processed, indent=2))  # noqa: T201
 
 
 if __name__ == "__main__":

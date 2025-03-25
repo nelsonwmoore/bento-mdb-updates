@@ -30,6 +30,8 @@ DEFAULT_RETRY_DELAY = 1.0
 
 SYNC_STATUS_YAML = Path("config/sync_status.yml")
 
+logger = logging.getLogger(__name__)
+
 
 def get_last_sync_date(
     source: str,
@@ -62,7 +64,7 @@ class CADSRClient:
             vs = []
             cde_pvs = json_response["DataElement"]["ValueDomain"]["PermissibleValues"]
             if not cde_pvs:
-                logging.warning(
+                logger.warning(
                     "No permissible values found for CDE %s v%s",
                     json_response["DataElement"]["publicId"],
                     json_response["DataElement"]["version"],
@@ -93,7 +95,7 @@ class CADSRClient:
                 vs.append(pv_dict)
         except Exception as e:
             msg = f"Exception occurred when getting value set from JSON: {e}\n{json_response}"
-            logging.exception(msg)
+            logger.exception(msg)
             return []
         else:
             return vs
@@ -122,7 +124,7 @@ class CADSRClient:
             value_set = self.get_valueset_from_json(json_response)
         except JSONDecodeError as e:
             msg = f"Failed to parse JSON response for entity {entity_key}: {e}\nurl: {url}"
-            logging.exception(msg)
+            logger.exception(msg)
             return []
         else:
             return value_set
@@ -141,7 +143,7 @@ class CADSRClient:
                 cde_version=cde_spec.get("CDEVersion"),
             )
             if not cadsr_pvs:
-                logging.exception(
+                logger.exception(
                     "Error fetching PVs from caDSR for %sv%s",
                     cde_spec["CDECode"],
                     cde_spec.get("CDEVersion"),
@@ -162,7 +164,7 @@ class CADSRClient:
             update_annotation = False
             for pv in cadsr_pvs:
                 if not pv:
-                    logging.exception(
+                    logger.exception(
                         "PVs from caDSR for %sv%s are null",
                         cde_spec["CDECode"],
                         cde_spec.get("CDEVersion"),
@@ -170,7 +172,7 @@ class CADSRClient:
                     continue
                 if pv["value"] in mdb_pvs:
                     continue
-                logging.info("New PV found: %s", pv["value"])
+                logger.info("New PV found: %s", pv["value"])
                 update_annotation = True
                 annotation_spec["value_set"].append(pv)
             if not update_annotation:
@@ -277,9 +279,9 @@ class NCItClient:
         latest = self.get_readme_date()
         last = get_last_sync_date(self.SOURCE_KEY)
         if not force_update and (not latest or latest <= last):
-            logging.info("No new mappings to sync.")
+            logger.info("No new mappings to sync.")
             return False
-        logging.info("New mappings with date %s found. Syncing...", latest)
+        logger.info("New mappings with date %s found. Syncing...", latest)
         self.ncim_mapping = self.download_and_extract_tsv()
         return True
 
@@ -322,7 +324,7 @@ class NCItClient:
                         ncim_syn_frozen = frozenset(ncim_syn.items())
                         if ncim_syn_frozen in mdb_synonyms_frozen:
                             continue
-                        logging.info("New synonym found: %s", ncim_syn["value"])
+                        logger.info("New synonym found: %s", ncim_syn["value"])
                         update_annotation = True
                         synonyms_to_add.append(ncim_syn)
                 if not update_annotation:
@@ -353,7 +355,7 @@ class GitHubClient:
         response = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
         if response.status_code != RESPONSE_200:
             msg = f"Failed to get tags for repo {repo}: {response.status_code}"
-            logging.error(msg)
+            logger.error(msg)
             return []
         tags = response.json()
         return [tag["name"] for tag in tags]
@@ -369,7 +371,7 @@ class GitHubClient:
             commit_msg = commit_msg or f"Update {file_to_commit.name}"
             subprocess.run(["git", "commit", "-m", commit_msg], check=True)
             subprocess.run(["git", "push"], check=True)
-            logging.info("Changes committed and pushed successfully.")
+            logger.info("Changes committed and pushed successfully.")
         except subprocess.CalledProcessError:
-            logging.exception("Failed to add %s to git", file_to_commit.name)
+            logger.exception("Failed to add %s to git", file_to_commit.name)
             return

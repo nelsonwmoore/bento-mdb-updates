@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 load_dotenv(Path("config/.env"))
+logger = logging.getLogger(__name__)
 
 
 def normalize_tag_version(tag: str) -> str:
@@ -32,7 +33,7 @@ def normalize_tag_version(tag: str) -> str:
     match = re.search(r"(\d+\.\d+\.\d+)", tag)
     if match:
         return match.group(1)
-    logging.warning("No semantic version found in tag %s", tag)
+    logger.warning("No semantic version found in tag %s", tag)
     return tag
 
 
@@ -45,10 +46,10 @@ def update_model_versions(
     """Update ModelSpec with missing version tags from GitHub."""
     updated = False
     for model, spec in model_specs.items():
-        logging.info("Checking %s...", model)
+        logger.info("Checking %s...", model)
         repo = spec.get("repository")
         if not repo:
-            logging.warning("No repository specified for %s", model)
+            logger.warning("No repository specified for %s", model)
             continue
         raw_tags = github_client.get_repo_tags(repo)
         current_versions = spec.get("versions")
@@ -61,11 +62,11 @@ def update_model_versions(
             if any(
                 v.get("tag") == tag and v.get("ignore", False) for v in current_versions
             ):
-                logging.info("Ignoring tag %s as it's marked as ignored", tag)
+                logger.info("Ignoring tag %s as it's marked as ignored", tag)
                 continue
 
             if new_only and tag_version <= current_latest_version:
-                logging.info(
+                logger.info(
                     "Skipping %s, version is not newer than latest version %s",
                     tag_version,
                     current_latest_version,
@@ -73,7 +74,7 @@ def update_model_versions(
                 continue
 
             if not any(v.get("version") == normalized_tag for v in current_versions):
-                logging.info("Adding %s to versions for %s", normalized_tag, model)
+                logger.info("Adding %s to versions for %s", normalized_tag, model)
                 new_version_entry = {"version": normalized_tag, "tag": tag}
                 current_versions.append(new_version_entry)
                 updated = True
@@ -107,13 +108,12 @@ def main(
     github_client = GitHubClient()
     model_specs = load_model_specs_from_yaml(model_specs_yaml)
     if update_model_versions(model_specs, github_client, new_only=new_only):
-        logging.info("Model versions updated. Saving changes...")
+        logger.info("Model versions updated. Saving changes...")
         dump_to_yaml(model_specs, model_specs_yaml)
     if not no_commit:
-        logging.info("Committing changes...")
+        logger.info("Committing changes...")
         github_client.commit_and_push_changes(model_specs_yaml)
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     main()

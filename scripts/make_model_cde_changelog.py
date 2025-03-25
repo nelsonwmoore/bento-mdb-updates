@@ -7,7 +7,7 @@ from pathlib import Path
 
 import click
 
-from bento_mdb_updates.changelogs import convert_model_cdes_to_changelog
+from bento_mdb_updates.cde_cypher import convert_model_cdes_to_changelog
 from bento_mdb_updates.model_cdes import (
     load_model_cde_spec,
 )
@@ -49,7 +49,7 @@ def main(
     author: str,
     _commit: str | None = None,
 ) -> None:
-    """Do stuff."""
+    """Convert CDE PVs to Neo4j Cypher statements."""
     model_cdes = load_model_cde_spec(model_handle, model_version)
     changelog = convert_model_cdes_to_changelog(model_cdes, author, _commit)
     output_dir = Path().cwd() / f"data/output/model_changelogs/{model_handle}"

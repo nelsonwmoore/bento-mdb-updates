@@ -7,7 +7,7 @@ from bento_mdf.mdf import MDF
 from bento_meta.model import Model
 from bento_meta.objects import Node, Property
 
-from scripts.make_model_changelog import ModelToChangelogConverter
+from bento_mdb_updates.model_cypher import ModelToChangelogConverter
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 TEST_MODEL_MDF = Path(CURRENT_DIRECTORY, "samples", "test_mdf.yml")

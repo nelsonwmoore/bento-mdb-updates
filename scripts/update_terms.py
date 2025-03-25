@@ -14,7 +14,7 @@ import click
 from bento_meta.mdb.mdb import MDB
 from dotenv import load_dotenv
 
-from bento_mdb_updates.changelogs import convert_model_cdes_to_changelog
+from bento_mdb_updates.cde_cypher import convert_model_cdes_to_changelog
 from bento_mdb_updates.clients import CADSRClient, NCItClient
 from bento_mdb_updates.model_cdes import (
     add_ncit_synonyms_to_model_cde_spec,
@@ -23,6 +23,8 @@ from bento_mdb_updates.model_cdes import (
 
 if TYPE_CHECKING:
     from bento_mdb_updates.datatypes import ModelCDESpec
+
+logger = logging.getLogger(__name__)
 
 
 @click.command()
@@ -99,20 +101,20 @@ def main(
     }
 
     # Check caDSR for new PVs
-    logging.info("Checking caDSR for new PVs...")
+    logger.info("Checking caDSR for new PVs...")
     cadsr_client = CADSRClient()
     cadsr_annotations, cadsr_models = cadsr_client.check_cdes_against_mdb(mdb_cdes)
     update_cde_spec["annotations"].extend(cadsr_annotations)
     affected_models.update(cadsr_models)
 
     # get NCIt synonyms for new PVs
-    logging.info("Getting NCIt synonyms for new PVs...")
+    logger.info("Getting NCIt synonyms for new PVs...")
     ncit_client = NCItClient()
     add_ncit_synonyms_to_model_cde_spec(update_cde_spec, ncit_client)
 
     # check NCIt for new PV synonyms
     if ncit_client.check_ncit_for_updated_mappings(force_update=True):
-        logging.info("Checking NCIt for new PV synonyms...")
+        logger.info("Checking NCIt for new PV synonyms...")
         ncit_annotaitons, ncit_models = ncit_client.check_synonyms_against_mdb(
             mdb_cdes,
         )
