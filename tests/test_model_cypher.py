@@ -1,6 +1,5 @@
 """Tests for model changelog generation script."""
 
-import re
 from pathlib import Path
 
 from bento_mdf.mdf import MDF
@@ -8,6 +7,7 @@ from bento_meta.model import Model
 from bento_meta.objects import Node, Property
 
 from bento_mdb_updates.model_cypher import ModelToChangelogConverter
+from tests.test_utils import remove_nanoids_from_str
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 TEST_MODEL_MDF = Path(CURRENT_DIRECTORY, "samples", "test_mdf.yml")
@@ -16,11 +16,6 @@ TEST_CHANGELOG_CONFIG = Path(CURRENT_DIRECTORY, "samples", "test_changelog.ini")
 AUTHOR = "Tolkien"
 MODEL_HDL = "TEST"
 _COMMIT = "_COMMIT_123"
-
-
-def remove_nanoids_from_str(statement: str) -> str:
-    """Remove values for 'nanoid' attr from string if present."""
-    return re.sub(r"nanoid:'[^']*'", "nanoid:''", statement)
 
 
 class TestMakeModelChangelog:

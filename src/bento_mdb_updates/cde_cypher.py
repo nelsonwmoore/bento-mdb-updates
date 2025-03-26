@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 from typing import TYPE_CHECKING, cast
 
@@ -56,9 +57,10 @@ def convert_annotation_to_changesets(
     ):
         if not pv:
             continue
+        pv_copy = copy.deepcopy(pv)
         # separate synonyms dict from pv attrs
-        synonyms = cast("list[dict[str, str | None]]", pv.pop("synonyms"))
-        pv_term = Term(pv)
+        synonyms = cast("list[dict[str, str | None]]", pv_copy.pop("synonyms"))
+        pv_term = Term(pv_copy)
         pv_term._commit = _commit  # noqa: SLF001
         statements.append(create_entity_cypher_stmt(pv_term)[0])
         statements.append(
