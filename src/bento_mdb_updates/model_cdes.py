@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 
 import yaml
 
+from bento_mdb_updates.datatypes import PermissibleValue
+
 if TYPE_CHECKING:
     from bento_meta.mdb.mdb import MDB
     from bento_meta.model import Model
@@ -219,3 +221,21 @@ def get_cdes_from_mdb(mdb: MDB) -> list[MDBCDESpec]:
         "models, permissibleValues "
     )
     return mdb.get_with_statement(qry)  # type: ignore ReportReturnType
+
+
+def set_ncit_concept_codes(pv: PermissibleValue) -> None:
+    """Set ncit_concept_codes for a PV with NCIt synonyms."""
+    pv["ncit_concept_codes"] = sorted(
+        {
+            syn["origin_id"]
+            for syn in pv.get("synonyms", [])
+            if syn.get("origin_name") == "NCIt" and syn.get("origin_id") is not None
+        }
+    )
+
+
+def process_mdb_cdes(mdb_cdes: list[MDBCDESpec]) -> None:
+    """Perform additional processing on MDB CDEs."""
+    for cde_spec in mdb_cdes:
+        for pv in cde_spec["permissibleValues"]:
+            set_ncit_concept_codes(pv)

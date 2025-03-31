@@ -10,7 +10,7 @@ from tests.test_utils import (
     TEST_ANNOTATION_SPEC_NO_VS,
     TEST_MODEL_CDE_SPEC,
     TEST_MODEL_CDE_SPEC_NO_ANNOTATIONS,
-    assert_actual_is_expected,
+    assert_equal,
     remove_nanoids_from_str,
 )
 
@@ -47,7 +47,7 @@ class TestConvertAnnotationToChangesets:
             "MERGE (n0:term {value:'Dog',origin_id:'5729587',origin_version:'1',origin_definition:'The domestic dog, Canis familiaris.',origin_name:'caDSR'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
             "MATCH (n0:value_set {handle:'6118266|1.00',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/6118266?version=1.00'}), (n1:term {value:'Dog',origin_id:'5729587',origin_version:'1',origin_definition:'The domestic dog, Canis familiaris.',origin_name:'caDSR'}) MERGE (n0)-[r0:has_term]->(n1)",
         ]
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
     def test_convert_annotation_to_changesets_min(self) -> None:
         changesets = convert_annotation_to_changesets(
@@ -67,7 +67,7 @@ class TestConvertAnnotationToChangesets:
             "MERGE (n0:term {value:'Adult - legal age',origin_id:'11524542',origin_version:'1',origin_definition:'A person of legal age to consent to a procedure as specifed by local regulation.',origin_name:'caDSR'}) ON CREATE SET n0._commit = 'CDEPV-TEST'",
             "MATCH (n0:value_set {handle:'11524549|',url:'https://cadsrapi.cancer.gov/rad/NCIAPI/1.0/api/DataElement/11524549'}), (n1:term {value:'Adult - legal age',origin_id:'11524542',origin_version:'1',origin_definition:'A person of legal age to consent to a procedure as specifed by local regulation.',origin_name:'caDSR'}) MERGE (n0)-[r0:has_term]->(n1)",
         ]
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
     def test_convert_annotation_to_changesets_no_vs(self) -> None:
         changesets = convert_annotation_to_changesets(
@@ -81,7 +81,7 @@ class TestConvertAnnotationToChangesets:
             for x in changesets
         ]
         expected = []
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
 
 class TestConvertModelCDES:
@@ -89,8 +89,8 @@ class TestConvertModelCDES:
         changelog = convert_model_cdes_to_changelog(TEST_MODEL_CDE_SPEC)
         expected_ids = range(1, len(changelog.subelements) + 1)
         for expected, changeset in zip(expected_ids, changelog.subelements):
-            assert_actual_is_expected(changeset.id, str(expected))
+            assert_equal(changeset.id, str(expected))
 
     def test_convert_model_cdes_to_changelog_no_annotations(self):
         changelog = convert_model_cdes_to_changelog(TEST_MODEL_CDE_SPEC_NO_ANNOTATIONS)
-        assert_actual_is_expected(len(changelog.subelements), 0)
+        assert_equal(len(changelog.subelements), 0)

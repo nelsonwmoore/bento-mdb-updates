@@ -7,7 +7,7 @@ from bento_meta.model import Model
 from bento_meta.objects import Node, Property
 
 from bento_mdb_updates.model_cypher import ModelToChangelogConverter
-from tests.test_utils import remove_nanoids_from_str
+from tests.test_utils import assert_equal, remove_nanoids_from_str
 
 CURRENT_DIRECTORY = Path(__file__).resolve().parent
 TEST_MODEL_MDF = Path(CURRENT_DIRECTORY, "samples", "test_mdf.yml")
@@ -30,7 +30,7 @@ class TestMakeModelChangelog:
         )
         actual = len(changelog.subelements)
         expected = 52
-        assert actual == expected
+        assert_equal(actual, expected)
 
     def test_make_model_changelog_shared_props(self) -> None:
         """Test for multiple nodes share property with the same handle."""
@@ -76,9 +76,7 @@ class TestMakeModelChangelog:
             "{handle:'id',model:'TEST',nanoid:'',value_domain:'string',desc:'desc of "
             "id'}) MERGE (n0)-[r0:has_property]->(n1)",
         ]
-        print(actual)
-        print(expected)
-        assert actual == expected
+        assert_equal(actual, expected)
 
     def test_shared_props_with_value_set(self) -> None:
         """Test for shared properties with value_set."""
@@ -180,9 +178,4 @@ class TestMakeModelChangelog:
             "MATCH (n0:value_set {nanoid:''}), (n1:term {handle:'dict',value:'dict',"
             "origin_name:'TEST'}) MERGE (n0)-[r0:has_term]->(n1)",
         ]
-        i = 0
-        for x, y in zip(actual, expected):
-            i += 1
-            if x == y:
-                continue
-        assert actual == expected
+        assert_equal(actual, expected)

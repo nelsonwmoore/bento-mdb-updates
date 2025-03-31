@@ -32,7 +32,7 @@ class PermissibleValue(TypedDict):
     origin_definition: str
     origin_version: str
     origin_name: str
-    ncit_concept_codes: list[str]
+    ncit_concept_codes: list[str | None]
     synonyms: list[dict[str, str | None]]
 
 

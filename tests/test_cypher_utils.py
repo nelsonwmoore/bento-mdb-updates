@@ -8,7 +8,7 @@ from bento_mdb_updates.cypher_utils import (
     escape_quotes_in_attr,
     generate_cypher_to_link_term_synonyms,
 )
-from tests.test_utils import assert_actual_is_expected
+from tests.test_utils import assert_equal
 
 
 def test_escape_quotes_in_attr() -> None:
@@ -30,12 +30,12 @@ class TestCreateEntityCypherStmt:
     def test_create_node_cypher(self) -> None:
         actual = str(create_entity_cypher_stmt(self.node)[0])
         expected = "CREATE (n0:node {handle:'test_node'})"
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
     def test_create_term_cypher(self) -> None:
         actual = str(create_entity_cypher_stmt(self.term)[0])
         expected = "MERGE (n0:term {value:'test_term'})"
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
     def test_create_term_with_commit_cypher(self) -> None:
         termc = Term(self.term)
@@ -45,12 +45,12 @@ class TestCreateEntityCypherStmt:
             "MERGE (n0:term {value:'test_term'}) "
             "ON CREATE SET n0._commit = 'TEST_COMMIT'"
         )
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
     def test_create_prop_cypher(self) -> None:
         actual = str(create_entity_cypher_stmt(self.prop)[0])
         expected = "CREATE (n0:property {handle:'test_prop'})"
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
 
 class TestCreateRelationshipCypherStmt:
@@ -67,7 +67,7 @@ class TestCreateRelationshipCypherStmt:
             "MATCH (n0:node {handle:'test_node'}), (n1:property {handle:'test_prop'}) "
             "MERGE (n0)-[r0:has_prop]->(n1)"
         )
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)
 
 
 class TestGenerateCypherToLinkTermSynonyms:
@@ -98,4 +98,4 @@ class TestGenerateCypherToLinkTermSynonyms:
             "CREATE (n6)-[r4:has_tag]->(n7:tag {key:'mapping_source',value:'NCIt'}) "
             "CREATE (n0)-[r5:represents]->(n6) CREATE (n1)-[r6:represents]->(n6) )"
         )
-        assert_actual_is_expected(actual, expected)
+        assert_equal(actual, expected)

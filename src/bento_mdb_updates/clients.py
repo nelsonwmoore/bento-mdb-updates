@@ -218,7 +218,9 @@ class NCItClient:
         response = requests.get(self.readme_url, timeout=DEFAULT_TIMEOUT)
         response.raise_for_status()
 
-        match = re.match(r"README (\d{6})", response.text.splitlines()[0].strip())
+        match = re.search(
+            r"NCIm version:\s*(\d{6})", response.text.splitlines()[0].strip()
+        )
         return (
             datetime.datetime.strptime(
                 match.group(1),
@@ -228,7 +230,9 @@ class NCItClient:
             else None
         )
 
-    def download_and_extract_tsv(self, save_path: Path | None = None) -> dict:
+    def download_and_extract_tsv(
+        self, tsv_filename: str = DEFAULT_NCIM_TSV.name, save_path: Path | None = None
+    ) -> dict:
         """Download and extract NCIt mappings TSV file from self.zip_url."""
         if not self.zip_url:
             msg = "zip_url is not set"
@@ -237,30 +241,36 @@ class NCItClient:
         response.raise_for_status()
 
         with zipfile.ZipFile(io.BytesIO(response.content), "r") as zip_ref:
-            tsv_filename = self.DEFAULT_NCIM_TSV.name
             with zip_ref.open(tsv_filename) as f:
                 tsv_content = f.read()
                 if save_path:
                     with save_path.open("wb") as save_file:
                         save_file.write(tsv_content)
-
-                return self.load_ncim_tsv_to_dict(f)
+                decoded_content = io.BytesIO(tsv_content)
+                return self.load_ncim_tsv_to_dict(decoded_content)
 
     def load_ncim_tsv_to_dict(
         self,
-        ncim_tsv: Path | io.TextIOWrapper | None = None,
+        ncim_tsv: Path | io.TextIOWrapper | io.BytesIO | None = None,
     ) -> dict:
         """Load NCIm TSV file to dict."""
         if not ncim_tsv:
+            logger.warning("No NCIm TSV file provided.")
             return {}
         ncim = {}
         if isinstance(ncim_tsv, Path):
             file = ncim_tsv.open(mode="r", encoding="utf-8")
-        else:
+        elif isinstance(ncim_tsv, io.BytesIO):
             file = io.TextIOWrapper(ncim_tsv, encoding="utf-8")
+        else:
+            file = ncim_tsv
         with file as f:
             reader = csv.reader(f, delimiter="\t")
+            next(reader, None)
             for row in reader:
+                if len(row) < 8:
+                    logger.warning("NCIm TSV row is missing required fields: %s", row)
+                    continue
                 nci_code = row[2]
                 syn_attrs = {
                     "origin_id": row[4],
@@ -308,6 +318,7 @@ class NCItClient:
             }
             for pv in cde_spec["permissibleValues"]:
                 mdb_synonyms = pv.get("synonyms", [])
+                print(f"{mdb_synonyms=}")
                 mdb_synonyms_frozen = {frozenset(syn.items()) for syn in mdb_synonyms}
                 pv_ncit_codes = [
                     syn.get("origin_id")
@@ -318,11 +329,14 @@ class NCItClient:
                 synonyms_to_add = []
                 for code in pv_ncit_codes:
                     if not code or code not in self.ncim_mapping:
+                        logger.info("No NCIm mapping for %s", code)
                         continue
                     ncim_synonyms = self.ncim_mapping[code]
+                    print(f"{ncim_synonyms=}")
                     for ncim_syn in ncim_synonyms:
                         ncim_syn_frozen = frozenset(ncim_syn.items())
                         if ncim_syn_frozen in mdb_synonyms_frozen:
+                            logger.info("NCIm synonym already exists: %s", ncim_syn)
                             continue
                         logger.info("New synonym found: %s", ncim_syn["value"])
                         update_annotation = True

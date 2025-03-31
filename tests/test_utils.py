@@ -1,8 +1,10 @@
 """Utilities for testing."""
 
+import io
 import re
+import zipfile
 
-from bento_mdb_updates.datatypes import AnnotationSpec, ModelCDESpec
+from bento_mdb_updates.datatypes import AnnotationSpec, MDBCDESpec, ModelCDESpec
 
 
 def remove_nanoids_from_str(statement: str) -> str:
@@ -10,7 +12,7 @@ def remove_nanoids_from_str(statement: str) -> str:
     return re.sub(r"nanoid:'[^']*'", "nanoid:''", statement)
 
 
-def assert_actual_is_expected(actual, expected) -> None:
+def assert_equal(actual, expected) -> None:
     """
     Custom assertion function to compare actual and expected results.
     Prints both values in case of failure for better debugging.
@@ -19,6 +21,15 @@ def assert_actual_is_expected(actual, expected) -> None:
         print("\n=== ACTUAL ===\n", actual)
         print("\n=== EXPECTED ===\n", expected)
     assert actual == expected
+
+
+def create_mock_zip(mock_name: str, mock_data: str) -> bytes:
+    """Create an in-memory ZIP file containing the mock TSV data."""
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        zip_file.writestr(mock_name, mock_data)
+    zip_buffer.seek(0)  # Reset buffer position
+    return zip_buffer.getvalue()
 
 
 TEST_ANNOTATION_SPEC = AnnotationSpec(
@@ -160,4 +171,456 @@ TEST_MODEL_CDE_SPEC_NO_ANNOTATIONS = ModelCDESpec(
     handle="TEST",
     version="1.2.3",
     annotations=[],
+)
+
+TEST_MDB_CDE_SPEC_RAW = {
+    "CDECode": "6142527",
+    "CDEVersion": "1.00",
+    "CDEFullName": "ploidy",
+    "CDEOrigin": "caDSR",
+    "models": [
+        {"property": "molecular_test.ploidy", "model": "CCDI", "version": "2.0.0"},
+        {"property": "molecular_test.ploidy", "model": "CCDI", "version": "2.1.0"},
+        {"property": "molecular_test.ploidy", "model": "C3DC", "version": "1.2.3"},
+    ],
+    "permissibleValues": [
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "20.05a",
+                    "origin_id": "C43234",
+                    "value": "Not Reported",
+                    "origin_name": "NCIt",
+                },
+                {
+                    "origin_version": "1",
+                    "origin_id": "C43234",
+                    "value": "Not Reported",
+                    "origin_name": "NCIt",
+                },
+            ],
+            "origin_id": "2572578",
+            "origin_definition": "Not provided or available.",
+            "value": "Not Reported",
+            "origin_name": "caDSR",
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "2024_03_01",
+                    "origin_id": "C123456",
+                    "value": "Unknown (qualifier value)",
+                    "origin_name": "NCIt",
+                },
+                {
+                    "origin_version": None,
+                    "origin_id": "C17998",
+                    "value": "Unknown",
+                    "origin_name": "NCIt",
+                },
+            ],
+            "origin_id": "2565695",
+            "origin_definition": "Not known, not observed, not recorded, or refused.",
+            "value": "Unknown",
+            "origin_name": "caDSR",
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [],
+            "origin_id": "2558889",
+            "origin_definition": "A chromosomal abnormality in which the chromosomal number is less than the normal diploid number.",
+            "value": "Hypodiploid",
+            "origin_name": "caDSR",
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "2_77",
+                    "origin_id": "LA30219-2",
+                    "value": "Hyperdiploid",
+                    "origin_name": "LNC",
+                },
+            ],
+            "origin_id": "2558886",
+            "origin_definition": "A chromosomal abnormality in which the chromosomal number is greater than the normal diploid number.",
+            "value": "Hyperdiploid",
+            "origin_name": "caDSR",
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "20.10d",
+                    "origin_id": "C118941",
+                    "value": "Diploidy",
+                    "origin_name": "NCIt",
+                },
+            ],
+            "origin_id": "2558626",
+            "origin_definition": "Having two sets of homologous chromosomes.",
+            "value": "Diploid",
+            "origin_name": "caDSR",
+        },
+    ],
+}
+
+TEST_MDB_CDE_SPEC = MDBCDESpec(
+    CDECode="6142527",
+    CDEVersion="1.00",
+    CDEFullName="ploidy",
+    CDEOrigin="caDSR",
+    models=[
+        {"property": "molecular_test.ploidy", "model": "CCDI", "version": "2.0.0"},
+        {"property": "molecular_test.ploidy", "model": "CCDI", "version": "2.1.0"},
+        {"property": "molecular_test.ploidy", "model": "C3DC", "version": "1.2.3"},
+    ],
+    permissibleValues=[
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "20.05a",
+                    "origin_id": "C43234",
+                    "value": "Not Reported",
+                    "origin_name": "NCIt",
+                },
+                {
+                    "origin_version": "1",
+                    "origin_id": "C43234",
+                    "value": "Not Reported",
+                    "origin_name": "NCIt",
+                },
+            ],
+            "origin_id": "2572578",
+            "origin_definition": "Not provided or available.",
+            "value": "Not Reported",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C43234"],
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "2024_03_01",
+                    "origin_id": "C123456",
+                    "value": "Unknown (qualifier value)",
+                    "origin_name": "NCIt",
+                },
+                {
+                    "origin_version": None,
+                    "origin_id": "C17998",
+                    "value": "Unknown",
+                    "origin_name": "NCIt",
+                },
+            ],
+            "origin_id": "2565695",
+            "origin_definition": "Not known, not observed, not recorded, or refused.",
+            "value": "Unknown",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C123456", "C17998"],
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [],
+            "origin_id": "2558889",
+            "origin_definition": "A chromosomal abnormality in which the chromosomal number is less than the normal diploid number.",
+            "value": "Hypodiploid",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": [],
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "2_77",
+                    "origin_id": "LA30219-2",
+                    "value": "Hyperdiploid",
+                    "origin_name": "LNC",
+                },
+            ],
+            "origin_id": "2558886",
+            "origin_definition": "A chromosomal abnormality in which the chromosomal number is greater than the normal diploid number.",
+            "value": "Hyperdiploid",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": [],
+        },
+        {
+            "origin_version": "1",
+            "synonyms": [
+                {
+                    "origin_version": "20.10d",
+                    "origin_id": "C118941",
+                    "value": "Diploidy",
+                    "origin_name": "NCIt",
+                },
+            ],
+            "origin_id": "2558626",
+            "origin_definition": "Having two sets of homologous chromosomes.",
+            "value": "Diploid",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C118941"],
+        },
+    ],
+)
+
+TEST_CADSR_RESPONSE_MDB_CDES = [
+    {
+        "value": "Not Reported",
+        "origin_version": "1",
+        "origin_id": "2572578",
+        "origin_definition": "Not provided or available.",
+        "origin_name": "caDSR",
+        "ncit_concept_codes": ["C43234"],
+        "synonyms": [
+            {
+                "origin_version": "20.05a",
+                "origin_id": "C43234",
+                "value": "Not Reported",
+                "origin_name": "NCIt",
+            },
+            {
+                "origin_version": "1",
+                "origin_id": "C43234",
+                "value": "Not Reported",
+                "origin_name": "NCIt",
+            },
+        ],
+    },
+    {
+        "value": "Unknown",
+        "origin_version": "1",
+        "origin_id": "2565695",
+        "origin_definition": "Not known, not observed, not recorded, or refused.",
+        "origin_name": "caDSR",
+        "ncit_concept_codes": ["C17998", "C123456"],
+        "synonyms": [
+            {
+                "origin_version": "2024_03_01",
+                "origin_id": "C123456",
+                "value": "Unknown (qualifier value)",
+                "origin_name": "NCIt",
+            },
+            {
+                "origin_version": None,
+                "origin_id": "C17998",
+                "value": "Unknown",
+                "origin_name": "NCIt",
+            },
+        ],
+    },
+    {
+        "value": "Hypodiploid",
+        "origin_version": "1",
+        "origin_id": "2558889",
+        "origin_definition": "A chromosomal abnormality in which the chromosomal number is less than the normal diploid number.",
+        "origin_name": "caDSR",
+        "ncit_concept_codes": [],
+        "synonyms": [],
+    },
+    {
+        "value": "Hyperdiploid",
+        "origin_version": "1",
+        "origin_id": "2558886",
+        "origin_definition": "A chromosomal abnormality in which the chromosomal number is greater than the normal diploid number.",
+        "origin_name": "caDSR",
+        "ncit_concept_codes": [],
+        "synonyms": [
+            {
+                "origin_version": "2_77",
+                "origin_id": "LA30219-2",
+                "value": "Hyperdiploid",
+                "origin_name": "LNC",
+            },
+        ],
+    },
+    {
+        "value": "Diploid",
+        "origin_version": "1",
+        "origin_id": "2558626",
+        "origin_definition": "Having two sets of homologous chromosomes.",
+        "origin_name": "caDSR",
+        "ncit_concept_codes": ["C118941"],
+        "synonyms": [
+            {
+                "origin_version": "20.10d",
+                "origin_id": "C118941",
+                "value": "Diploidy",
+                "origin_name": "NCIt",
+            },
+        ],
+    },
+]
+
+TEST_NCIM_MAPPING = {
+    # single synonym
+    "C39299": [
+        {
+            "origin_id": "LA19834-3",
+            "origin_name": "LNC",
+            "origin_version": "1",
+            "value": "Pediatric",
+        }
+    ],
+    # multiple synonyms
+    "C17998": [
+        {
+            "origin_id": "LA15677-0",
+            "origin_name": "LNC",
+            "origin_version": "1.2",
+            "value": "? = Unknown",
+        },
+        {
+            "origin_id": "RID39181",
+            "origin_name": "RADLEX",
+            "origin_version": "",
+            "value": "Unknown",
+        },
+    ],
+    # not in mdb (unmatched)
+    "C0392366": [
+        {
+            "origin_id": "272393004",
+            "origin_name": "SNOMEDCT_US",
+            "origin_version": "20020131",
+            "value": "Tests",
+        }
+    ],
+}
+
+TEST_NCIM_MAPPING_TSV = """NCI Meta CUI\tNCI Meta Concept Name\tNCI Code\tNCI PT\tSource Atom Code\tSource Atom Name\tSource\tVersion\tSource Term Type
+C39299\tPediatric\tC39299\tPediatric\tLA19834-3\tPediatric\tLNC\t1\tPT
+C17998\tUnknown\tC17998\tUnknown\tLA15677-0\t? = Unknown\tLNC\t1.2\tSY
+C17998\tUnknown\tC17998\tUnknown\tRID39181\tUnknown\tRADLEX\t\tSY
+C0392366\tTests\tC0392366\tTests\t272393004\tTests\tSNOMEDCT_US\t20020131\tPT
+"""
+
+TEST_MDB_CDES_NCIM = [
+    MDBCDESpec(
+        CDECode="cde1",
+        CDEVersion="1.0",
+        CDEFullName="Pediatric",
+        CDEOrigin="caDSR",
+        models=[
+            {"property": "test.pediatric", "model": "CCDI", "version": "2.0.0"},
+            {"property": "test.pediatric", "model": "CCDI", "version": "2.1.0"},
+            {"property": "test.pediatric", "model": "C3DC", "version": "1.2.3"},
+        ],
+        permissibleValues=[
+            {
+                "origin_version": "1",
+                "origin_id": "oid1",
+                "origin_definition": "",
+                "value": "Pediatric",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": ["C39299"],
+                "synonyms": [
+                    {
+                        "origin_id": "C39299",
+                        "origin_name": "NCIt",
+                        "origin_version": "1",
+                        "value": "peds",
+                    },
+                    {
+                        "origin_id": "LA19834-3",
+                        "origin_name": "LNC",
+                        "origin_version": "1",
+                        "value": "Pediatric",
+                    },
+                ],
+            },
+        ],
+    ),
+    MDBCDESpec(
+        CDECode="cde2",
+        CDEVersion="1.0",
+        CDEFullName="Unknown",
+        CDEOrigin="caDSR",
+        models=[
+            {"property": "test.unknown", "model": "CCDI", "version": "2.0.0"},
+            {"property": "test.unknown", "model": "CCDI", "version": "2.1.0"},
+            {"property": "test.unknown", "model": "C3DC", "version": "1.2.3"},
+        ],
+        permissibleValues=[
+            {
+                "origin_version": "",
+                "origin_id": "oid2",
+                "origin_definition": "",
+                "value": "Unknown",
+                "origin_name": "caDSR",
+                "ncit_concept_codes": ["C17998"],
+                "synonyms": [
+                    {
+                        "origin_id": "C17998",
+                        "origin_name": "NCIt",
+                        "origin_version": "1",
+                        "value": "unknown",
+                    },
+                    {
+                        "origin_id": "LA15677-0",
+                        "origin_name": "LNC",
+                        "origin_version": "1.2",
+                        "value": "? = Unknown",
+                    },
+                    {
+                        "origin_id": "RID39181",
+                        "origin_name": "RADLEX",
+                        "origin_version": "",
+                        "value": "Unknown",
+                    },
+                ],
+            },
+        ],
+    ),
+]
+
+TEST_ANNOTATION_SPEC_NCIM = AnnotationSpec(
+    entity={},
+    annotation={
+        "key": ("Unknown", "caDSR"),
+        "attrs": {
+            "origin_id": "cde2",
+            "origin_version": "1.0",
+            "origin_name": "caDSR",
+            "value": "Unknown",
+        },
+    },
+    value_set=[
+        {
+            "origin_version": "",
+            "origin_id": "oid2",
+            "origin_definition": "",
+            "value": "Unknown",
+            "origin_name": "caDSR",
+            "ncit_concept_codes": ["C17998"],
+            "synonyms": [
+                {
+                    "origin_id": "C17998",
+                    "origin_name": "NCIt",
+                    "origin_version": "1",
+                    "value": "unknown",
+                },
+                {
+                    "origin_id": "LA15677-0",
+                    "origin_name": "LNC",
+                    "origin_version": "1.2",
+                    "value": "? = Unknown",
+                },
+                {
+                    "origin_id": "RID39181",
+                    "origin_name": "RADLEX",
+                    "origin_version": "",
+                    "value": "Unknown",
+                },
+                {
+                    "origin_id": "oid123",
+                    "origin_name": "TERMS-R-US",
+                    "origin_version": "20000101",
+                    "value": "UNKNWN",
+                },
+            ],
+        }
+    ],
 )
