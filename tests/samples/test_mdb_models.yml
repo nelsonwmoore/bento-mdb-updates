@@ -1,0 +1,11 @@
+# models, versions, repos in MDB
+TEST:
+  repository: nelsonwmoore/test-model
+  mdf_directory: model-desc
+  mdf_files:
+    - test-model.yml
+    - test-model-props.yml
+    - test-model-terms.yml
+  in_data_hub: false
+  versions: []
+  latest_version: 0.0.1

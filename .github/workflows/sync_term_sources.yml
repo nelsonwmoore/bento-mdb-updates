@@ -1,0 +1,137 @@
+name: Generate and Commit Term Update Changelog
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - config/mdb_models.yml
+  workflow_dispatch:
+    inputs:
+      mdb_uri:
+        description: "URI for Neo4j MDB instance"
+        required: false
+        default: ""
+      mdb_user:
+        description: "Username for Neo4j MDB"
+        required: false
+        default: ""
+      mdb_pass:
+        description: "Password for Neo4j MDB"
+        required: false
+        default: ""
+      author:
+        description: "Author name for changes"
+        required: false
+        default: "GitHub Actions"
+      commit_sha:
+        description: "Commit SHA for reference"
+        required: false
+        default: ""
+
+jobs:
+  update-mdb-terms:
+    runs-on: ubuntu-latest
+    outputs:
+      affected_models: $ {{ steps.update-terms.outputs.affected_models }}
+      filtered_models: $ {{ steps.filter-datahub-models.outputs.affected_models }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+
+      - name: Install project
+        run: |
+          uv pip install .
+      
+      - name: Update terms
+        id: update-terms
+        run: |
+          AFFECTED_MODELS=$(python -m update_terms \
+            --mdb_uri="${{ github.event.inputs.mdb_uri || secrets.NEO4J_MDB_URI }}" \
+            --mdb_user="${{ github.event.inputs.mdb_user || secrets.NEO4J_MDB_USER }}" \
+            --mdb_pass="${{ github.event.inputs.mdb_pass || secrets.NEO4J_MDB_PASS }}" \
+            --author="${{ github.event.inputs.author || 'GitHub Actions' }}" \
+            --_commit="${{ github.event.inputs.commit_sha || github.sha }}")
+
+          # Set as output (for newer GitHub Actions)
+          echo "affected_models=$AFFECTED_MODELS" >> $GITHUB_OUTPUT
+
+      - name: Filter affected datahub models
+        id: filter-datahub-models
+        if: steps.update-terms.outputs.affected_models
+        run: |
+          FILTERED_MODELS=$(python filter_datahub_models.py \
+            --affected_models_json='${{ steps.update-terms.outputs.affected_models }}' \
+            --model_specs_yaml=config/mdb_models.yml)
+          
+          echo "affected_models=$FILTERED_MODELS" >> $GITHUB_OUTPUT
+
+  update-datahub-terms:
+    runs-on: ubuntu-latest
+    needs: [update-mdb-terms]
+    if: needs.update-mdb-terms.outputs.filtered_models != '[]'
+    strategy:
+      matrix:
+        model: ${{ fromJson(needs.update-mdb-terms.outputs.filtered_models) }}
+    steps:
+      - name: Checkout bento-mdb-updates repository
+        uses: actions/checkout@v3
+        with:
+          ref: dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+  
+      - name: Install project
+        run: |
+          uv pip install .
+
+      - name: Generate Permissible Values JSON
+        id: generate-pv-json
+        run: |
+          python get_pvs_json --model ${{ matrix.model.model }} --version ${{ matrix.model.version }} > ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json
+          echo "Generated STS JSON for ${{ matrix.model.model }} version ${{ matrix.model.version }}"
+      
+      - name: Checkout crdc-datahub-terms repository
+        uses: actions/checkout@v3
+        with:
+          repository: CBIIT/crdc-datahub-terms
+          ref: dev2
+          token: ${{ secrets.GH_PAT }}
+          path: datahub-terms-repo
+
+      - name: Copy report to crdc-datahub-terms repo
+        run: |
+          cp ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json crdc-datahub-terms/ 
+          echo "Copied ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json to crdc-datahub-terms/ directory."
+
+      - name: Commit and push report
+        working-directory: datahub-terms-repo
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json
+          git commit -m "Update STS JSON for ${{ matrix.model.model }}_v${{ matrix.model.version }}"
+          git push

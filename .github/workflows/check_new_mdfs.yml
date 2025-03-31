@@ -1,0 +1,55 @@
+name: Check New MDFs
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # runs daily at midnight UTC (adjust as needed)
+  workflow_dispatch:
+    inputs:
+      models_yaml_path:
+        description: "Path to YAML files with models & refs their MDFs."
+        required: false
+        default: "config/mdb_models.yml"
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        default: "false"
+      new_only:
+        description: "Only update if tag is newer than latest version."
+        required: false
+        default: "true"
+
+jobs:
+  check_new_mdfs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+
+      - name: Install project
+        run: |
+          uv pip install .
+
+      - name: Run MDF Check Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python check_new_mdfs \
+          --model_specs_yaml "${{ github.event.inputs.models_yaml_path }}" \
+          --no_commit "${{ github.event.inputs.no_commit }}" \
+          --new_only "${{ github.event.inputs.new_only }}"

@@ -1,0 +1,142 @@
+name: Generate and Commit Liquibase Changelogs
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - config/mdb_models.yml
+  workflow_dispatch:
+    inputs:
+      models_spec_path:
+        description: "Path to YAML files with models & refs their MDFs."
+        required: false
+        default: "config/mdb_models.yml"
+      model:
+        description: "Specific model handle to process"
+        required: false
+        default: ""
+      version:
+        description: "Specific version to process"
+        required: false
+        default: ""
+      mdf_files:
+        description: "Path or URL to specific MDF files to process"
+        required: false
+        default: ""
+
+jobs:
+  determine-models:
+    runs-on: ubuntu-latest
+    outputs:
+      model_matrix: ${{ steps.set-matrix.outputs.model_matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+
+      - name: Install project
+        run: |
+          uv pip install .
+
+      - name: Generate Model Version Matrix
+        id: set-matrix
+        run: |
+          # If specific model/version/mdfs provided, use them; otherwise, generate the full matrix.
+          if [ "${{ github.event.inputs.model }}" != "" ] && [ "${{ github.event.inputs.version }}" != "" ]; then
+            echo "{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files }}]}" > matrix.json
+          else
+            python generate_model_version_matrix "${{ github.event.inputs.models_spec_path }}" > matrix.json
+          fi
+          MATRIX=$(cat matrix.json)
+          echo "model_matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  generate-changelogs:
+    needs: determine-models
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.determine-models.outputs.model_matrix) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          ref: dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies
+        run: |
+          uv sync --all-extras --dev
+
+      - name: Install project
+        run: |
+          uv pip install .
+
+      - name: Make Model Changelog
+        run: |
+          set -e
+
+          MDF_FILES_OPTIONS=""
+          for file in $(echo '${{ matrix.mdf_files }}' | jq -r '.[]'); do
+            MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
+          done
+
+          python make_model_changelogs \
+          --model_handle="${{ matrix.model }}" \
+          --model_version="${{ matrix.version }}" \
+          $MDF_FILES_OPTIONS \
+          --output_file_path="data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" \
+          --author="GitHub Actions" \
+          --_commit="${{ github.sha }}" \
+          --latest_version=True
+
+      - name: Get Model PVs and Synonyms
+        run: |
+          set -e
+
+          MDF_FILES_OPTIONS=""
+          for file in $(echo '${{ matrix.mdf_files }}' | jq -r '.[]'); do
+            MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
+          done
+
+          python get_pvs_and_synonyms \
+          --model_handle="${{ matrix.model }}" \
+          --model_version="${{ matrix.version }}" \
+          $MDF_FILES_OPTIONS \
+
+      - name: Make Model CDE Changelog
+        run: |
+          python make_model_cde_changelog \
+          --model_handle="${{ matrix.model }}" \
+          --model_version="${{ matrix.version }}"
+
+      - name: Commit Generated Files
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml
+          git add data/output/model_cde_pvs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cdes.yml
+          git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml
+          git commit -m "Add new files for ${{ matrix.model }} v${{ matrix.version }}"
+          git push

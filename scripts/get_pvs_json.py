@@ -1,0 +1,83 @@
+"""Affter updating database or mappings, update data hub JSON files."""
+
+import json
+import os
+from pathlib import Path
+
+import click
+import dotenv
+from bento_meta.mdb.mdb import MDB
+
+dotenv.load_dotenv(Path("config/.env"), override=True)
+
+QUERY = (
+    "MATCH (n {model: $dataCommons, version: $version})-[:has_property]->"
+    "(p:property) "
+    "WITH collect(p) AS props "
+    "UNWIND props AS prop "
+    "OPTIONAL MATCH (prop)-[:has_concept]->(c:concept)<-[:represents]-"
+    "(cde:term) WHERE toLower(cde.origin_name) CONTAINS 'cadsr' "
+    "OPTIONAL MATCH (prop)-[:has_value_set]->(:value_set)-[:has_term]->(t:term)"
+    " WITH prop, cde.origin_id AS CDECode, cde.origin_version AS CDEVersion, "
+    "cde.value AS CDEFullName, cde.origin_id + '|' + cde.origin_version "
+    "AS cde_hdl, collect(t) AS model_pvs, "
+    "CASE WHEN cde IS NOT NULL THEN true ELSE false END AS has_cde "
+    "OPTIONAL MATCH (v:value_set {handle: cde_hdl})-[:has_term]->(cde_pv:term) "
+    "WITH prop, CDECode, CDEVersion, CDEFullName, model_pvs, has_cde, "
+    "collect(cde_pv) AS cde_pvs WITH prop, CDECode, CDEVersion, CDEFullName, "
+    "model_pvs, has_cde, cde_pvs, CASE WHEN has_cde AND size(cde_pvs) > 0 "
+    "AND NONE(p in cde_pvs WHERE p.value =~ 'https?://.*') THEN cde_pvs "
+    "WHEN has_cde and size(cde_pvs) > 0 "
+    "AND ANY(p in cde_pvs WHERE p.value =~ 'https?://.*') "
+    "AND size(model_pvs) > 0 THEN model_pvs "
+    "WHEN NOT has_cde AND size(model_pvs) > 0 THEN model_pvs "
+    "ELSE [null] END AS pvs "
+    "UNWIND pvs AS pv "
+    "OPTIONAL MATCH (pv)-[:represents]->(c:concept)<-[:represents]-"
+    "(syn:term), (c)-[:has_tag]->(g:tag {key: 'mapping_source', value: 'NCIm'})"
+    " WHERE pv <> syn and pv.value <> syn.value "
+    "WITH prop, CDECode, CDEVersion, CDEFullName, model_pvs, "
+    "pv.value AS pv_val, collect(DISTINCT syn.value) AS syn_vals "
+    "WITH prop, CDECode, CDEVersion, CDEFullName, model_pvs, "
+    "collect({value: pv_val, synonyms: syn_vals}) AS formatted_pvs "
+    "RETURN $dataCommons AS dataCommons, $version AS version, "
+    "prop AS property, CDECode, CDEVersion, CDEFullName, "
+    "formatted_pvs AS permissibleValues"
+)
+
+
+@click.command()
+@click.option(
+    "-m",
+    "--model",
+    required=True,
+    type=str,
+    prompt=True,
+    help="CRDC Model Handle (e.g. 'GDC')",
+)
+@click.option(
+    "-v",
+    "--version",
+    required=True,
+    type=str,
+    prompt=True,
+    help="CRDC Model Version (e.g. '1.2.3')",
+)
+def main(model: str, version: str) -> None:
+    """Do stuff."""
+    mdb = MDB(
+        uri=os.environ.get("NEO4J_MDB_URI"),
+        user=os.environ.get("NEO4J_MDB_USER"),
+        password=os.environ.get("NEO4J_MDB_PASS"),
+    )
+    parms = {"dataCommons": model, "version": version}
+    result = mdb.get_with_statement(QUERY, parms)
+    processed = [
+        {**item, "property": item.get("property", {}).get("handle", "")}
+        for item in result
+    ]
+    print(json.dumps(processed, indent=2))  # noqa: T201
+
+
+if __name__ == "__main__":
+    main()
