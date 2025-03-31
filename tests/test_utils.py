@@ -4,7 +4,12 @@ import io
 import re
 import zipfile
 
-from bento_mdb_updates.datatypes import AnnotationSpec, MDBCDESpec, ModelCDESpec
+from bento_mdb_updates.datatypes import (
+    AnnotationSpec,
+    MDBCDESpec,
+    ModelCDESpec,
+    ModelSpec,
+)
 
 
 def remove_nanoids_from_str(statement: str) -> str:
@@ -37,7 +42,7 @@ TEST_ANNOTATION_SPEC = AnnotationSpec(
         "key": ("study", "organism_species"),
         "attrs": {
             "handle": "organism_species",
-            "model": "CDS",
+            "model": "TEST",
             "value_domain": "value_set",
             "is_required": "Preferred",
             "is_key": "False",
@@ -623,4 +628,111 @@ TEST_ANNOTATION_SPEC_NCIM = AnnotationSpec(
             ],
         }
     ],
+)
+
+TEST_MODEL_SPEC_YML = """
+    TCDS:
+        repository: CBIIT/test-cds-model
+        mdf_directory: model-desc
+        mdf_files:
+        - test-cds-model.yml
+        - test-cds-model-props.yml
+        in_data_hub: true
+        versions:
+            - version: 1.0.0
+              tag: 1.0.0-release
+        latest_version: 1.0.0
+    TCCDI:
+        repository: CBIIT/test-ccdi-model
+        mdf_directory: model-desc
+        mdf_files:
+        - test-ccdi-model.yml
+        - test-ccdi-model-props.yml
+        - terms.yml
+        in_data_hub: false
+        versions:
+            - version: 0.1.0
+            - version: 2.0.0
+              tag: 2.0.0
+        latest_version: 2.0.0
+"""
+
+TEST_MODEL_SPEC = {
+    "TCDS": ModelSpec(
+        {
+            "repository": "CBIIT/test-cds-model",
+            "mdf_directory": "model-desc",
+            "mdf_files": ["test-cds-model.yml", "test-cds-model-props.yml"],
+            "in_data_hub": True,
+            "versions": [{"version": "1.0.0", "tag": "1.0.0-release"}],
+            "latest_version": "1.0.0",
+        }
+    ),
+    "TCCDI": ModelSpec(
+        {
+            "repository": "CBIIT/test-ccdi-model",
+            "mdf_directory": "model-desc",
+            "mdf_files": [
+                "test-ccdi-model.yml",
+                "test-ccdi-model-props.yml",
+                "terms.yml",
+            ],
+            "in_data_hub": False,
+            "versions": [
+                {"version": "0.1.0"},
+                {"version": "2.0.0", "tag": "2.0.0"},
+            ],
+            "latest_version": "2.0.0",
+        }
+    ),
+}
+
+TEST_MODEL_SPEC_INVALID_YML = """
+    TCDS:
+        repository: "CBIIT/test-cds-model
+        mdf_directory: model-desc
+        mdf_files:
+        - test-cds-model.yml
+        - test-cds-model-props.yml
+        in_data_hub: true
+        versions:
+            - version: 1.0.0
+              tag: 1.0.0-release
+        latest_version: 1.0.0
+"""
+
+TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
+    {
+        "handle": "TEST",
+        "version": "1.2.3",
+        "annotations": [
+            {
+                "entity": {
+                    "key": ("study", "organism_species"),
+                    "attrs": {
+                        "handle": "organism_species",
+                        "model": "TEST",
+                        "value_domain": "value_set",
+                        "is_required": "Preferred",
+                        "is_key": "False",
+                        "is_nullable": "False",
+                        "is_strict": "True",
+                        "desc": "Species binomial of study participants",
+                    },
+                    "entity_has_enum": True,
+                },
+                "annotation": {
+                    "key": ("sample_organism_type", "caDSR"),
+                    "attrs": {
+                        "handle": "sample_organism_type",
+                        "value": "Sample Organism Type",
+                        "origin_id": "6118266",
+                        "origin_version": "1.00",
+                        "origin_name": "caDSR",
+                    },
+                },
+                "value_set": [],
+            }
+        ],
+    }
 )

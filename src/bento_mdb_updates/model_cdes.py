@@ -27,7 +27,7 @@ def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
             return yaml.safe_load(f)
         except yaml.YAMLError as exc:
             msg = f"Error parsing YAML file {yaml_file}: {exc}"
-            raise ValueError(msg) from exc
+            raise yaml.YAMLError(msg) from exc
 
 
 def get_yaml_files_from_spec(
@@ -46,6 +46,7 @@ def get_yaml_files_from_spec(
         raise ValueError(msg)
     if not mdf_files:
         msg = "Model spec must have file names for MDF files."
+        raise ValueError(msg)
 
     version_entry = next(
         (v for v in model_spec.get("versions", []) if v["version"] == version),
