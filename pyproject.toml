@@ -46,3 +46,6 @@ dev = [
 markers = [
     "docker: marks tests that require docker",
 ]
+
+[tool.uv]
+package = true
