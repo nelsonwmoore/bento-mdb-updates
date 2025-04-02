@@ -24,8 +24,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          ref: dev
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -40,18 +38,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --dev
-
-      - name: Debug environment paths
-        run: |
-          echo "Python executable: $(which python)"
-          echo "Python version: $(python --version)"
-          echo "Current directory: $(pwd)"
-          echo "pythonLocation: $pythonLocation"
-          echo "PATH: $PATH"
-          echo "Looking for installed scripts:"
-          find $pythonLocation -name "check_new_mdfs" -type f
-          find /opt -name "check_new_mdfs" -type f
-          ls -la $pythonLocation/bin/ || echo "No bin directory"
 
       - name: Run MDF Check Script
         env:
