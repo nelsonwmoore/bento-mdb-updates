@@ -30,7 +30,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: "3.11"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -40,10 +40,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --dev
-
-      - name: Install project
-        run: |
-          uv pip install .
 
       - name: Run MDF Check Script
         env:
