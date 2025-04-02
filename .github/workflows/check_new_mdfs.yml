@@ -39,7 +39,7 @@ jobs:
         run: |
           uv pip install --system -e .
           uv sync --all-extras --dev
-          which check new_mdfs || ech "Script not found"
+          which check new_mdfs || echo "Script not found"
           ls -la $(which python | xargs dirname)
 
       - name: Run MDF Check Script
