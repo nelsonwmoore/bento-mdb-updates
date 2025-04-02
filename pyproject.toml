@@ -36,7 +36,7 @@ update_mdb = "scripts.update_mdb:main"
 update_terms = "scripts.update_terms:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bento_mdb_updates"]
+packages = ["src/bento_mdb_updates", "scripts"]
 
 [dependency-groups]
 dev = [

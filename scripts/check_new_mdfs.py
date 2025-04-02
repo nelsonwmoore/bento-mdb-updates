@@ -112,7 +112,7 @@ def main(
         dump_to_yaml(model_specs, model_specs_yaml)
     if not no_commit:
         logger.info("Committing changes...")
-        github_client.commit_and_push_changes(model_specs_yaml)
+        github_client.commit_and_push_changes(Path(model_specs_yaml))
 
 
 if __name__ == "__main__":
