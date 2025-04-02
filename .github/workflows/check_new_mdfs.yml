@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies and project
         run: |
           uv pip install --system -e .
-          uv sync --system --all-extras --dev
+          uv sync --all-extras --dev
           which check new_mdfs || ech "Script not found"
           ls -la $(which python | xargs dirname)
 
