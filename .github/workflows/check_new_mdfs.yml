@@ -25,19 +25,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           version: "0.5.10"
 
-      - name: Install dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install dependencies and project
         run: |
-          uv sync --all-extras --dev
+          uv pip install --system -e .
+          uv sync --system --all-extras --dev
+          which check new_mdfs || ech "Script not found"
+          ls -la $(which python | xargs dirname)
 
       - name: Run MDF Check Script
         env:
