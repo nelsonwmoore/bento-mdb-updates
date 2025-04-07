@@ -52,8 +52,15 @@ def update_model_versions(
             logger.warning("No repository specified for %s", model)
             continue
         raw_tags = github_client.get_repo_tags(repo)
-        current_versions = spec.get("versions")
-        current_latest_version = Version(spec.get("latest_version", "0.0.0"))
+        current_versions = spec.get("versions", [])
+
+        nonignored_versions = [
+            v for v in current_versions if not v.get("ignore", False)
+        ]
+        current_latest_version = Version(
+            max([v["version"] for v in nonignored_versions], default="0.0.0")
+        )
+        # current_latest_version = Version(spec.get("latest_version", "0.0.0"))
 
         for tag in raw_tags:
             normalized_tag = normalize_tag_version(tag)
@@ -85,7 +92,14 @@ def update_model_versions(
                 key=lambda x: parse_version(x["version"]),
             )
             spec["versions"] = sorted_versions
-            spec["latest_version"] = sorted_versions[-1]["version"]
+
+            nonignored_sorted = [
+                v for v in sorted_versions if not v.get("ignore", False)
+            ]
+            if nonignored_sorted:
+                spec["latest_version"] = nonignored_sorted[-1]["version"]
+            else:
+                spec["latest_version"] = "0.0.0"
     return updated
 
 
@@ -96,8 +110,20 @@ def update_model_versions(
     default="config/mdb_models.yml",
     type=click.Path(exists=True, dir_okay=False, file_okay=True),
 )
-@click.option("--new_only", is_flag=True, help="Only update new versions")
-@click.option("--no_commit", is_flag=True, help="Don't commit changes")
+@click.option(
+    "--new_only",
+    type=bool,
+    default=True,
+    show_default=True,
+    help="Only update new versions",
+)
+@click.option(
+    "--no_commit",
+    type=bool,
+    default=False,
+    show_default=True,
+    help="Don't commit changes",
+)
 def main(
     model_specs_yaml: Path,
     *,
@@ -107,9 +133,12 @@ def main(
     """Update model versions in the model spec YAML and commit changes to GitHub."""
     github_client = GitHubClient()
     model_specs = load_model_specs_from_yaml(model_specs_yaml)
-    if update_model_versions(model_specs, github_client, new_only=new_only):
-        logger.info("Model versions updated. Saving changes...")
-        dump_to_yaml(model_specs, model_specs_yaml)
+    updated = update_model_versions(model_specs, github_client, new_only=new_only)
+    if not updated:
+        logger.info("No new versions found. Exiting.")
+        return
+    logger.info("Model versions updated. Saving changes...")
+    dump_to_yaml(model_specs, model_specs_yaml)
     if not no_commit:
         logger.info("Committing changes...")
         github_client.commit_and_push_changes(Path(model_specs_yaml))

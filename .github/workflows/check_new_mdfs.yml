@@ -46,7 +46,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          MODEL_SPECS_YAML="${{ github.event.inputs.models_yaml_path || 'config/mdb_models.yml' }}"
+          NO_COMMIT="${{ github.event.inputs.no_commit || 'false' }}"
+          NEW_ONLY="${{ github.event.inputs.new_only || 'true' }}"
+
           check_new_mdfs \
-          --model_specs_yaml "${{ github.event.inputs.models_yaml_path }}" \
-          --no_commit "${{ github.event.inputs.no_commit }}" \
-          --new_only "${{ github.event.inputs.new_only }}"
+          --model_specs_yaml "$MODEL_SPECS_YAML" \
+          --no_commit "$NO_COMMIT" \
+          --new_only "$NEW_ONLY"
