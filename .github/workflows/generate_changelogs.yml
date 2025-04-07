@@ -56,7 +56,7 @@ jobs:
           if [ "${{ github.event.inputs.model }}" != "" ] && [ "${{ github.event.inputs.version }}" != "" ]; then
             echo "{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files }}]}" > matrix.json
           else
-            python generate_model_version_matrix "${{ github.event.inputs.models_spec_path }}" > matrix.json
+            generate_model_version_matrix "${{ github.event.inputs.models_spec_path }}" > matrix.json
           fi
           MATRIX=$(cat matrix.json)
           echo "model_matrix=$MATRIX" >> $GITHUB_OUTPUT
@@ -94,7 +94,7 @@ jobs:
             MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
           done
 
-          python make_model_changelogs \
+          make_model_changelogs \
           --model_handle="${{ matrix.model }}" \
           --model_version="${{ matrix.version }}" \
           $MDF_FILES_OPTIONS \
@@ -112,14 +112,14 @@ jobs:
             MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
           done
 
-          python get_pvs_and_synonyms \
+          get_pvs_and_synonyms \
           --model_handle="${{ matrix.model }}" \
           --model_version="${{ matrix.version }}" \
           $MDF_FILES_OPTIONS \
 
       - name: Make Model CDE Changelog
         run: |
-          python make_model_cde_changelog \
+          make_model_cde_changelog \
           --model_handle="${{ matrix.model }}" \
           --model_version="${{ matrix.version }}"
 
