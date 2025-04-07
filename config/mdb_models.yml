@@ -13,7 +13,9 @@ C3DC:
     tag: 2.0.0
   - version: 2.0.1
     tag: 2.0.1
-  latest_version: 2.0.1
+  - version: 2.1.0
+    tag: 2.1.0
+  latest_version: 2.1.0
 CCDI:
   repository: CBIIT/ccdi-model
   mdf_directory: model-desc
@@ -62,7 +64,9 @@ CDS:
   - version: 6.0.0
   - version: 6.0.1
     tag: 6.0.1-CDS_Release
-  latest_version: 6.0.1
+  - version: 6.0.2
+    tag: 6.0.2-CDS_Release
+  latest_version: 6.0.2
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
   mdf_directory: .
@@ -121,10 +125,10 @@ ICDC:
   - version: 1.0.0
   - version: 2.0.0
     tag: v2.0.0
-    ignore: True
+    ignore: true
   - version: 3.8.7
     tag: Tag_for_FE_v3.8.7_588
-    ignore: True
+    ignore: true
   latest_version: 1.0.0
 PDC:
   repository: CBIIT/pdc-model
