@@ -151,7 +151,7 @@ requires-dist = [
     { name = "bento-meta", specifier = ">=0.2.12" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "liquichange", specifier = ">=0.2.1" },
-    { name = "minicypher", git = "https://github.com/CBIIT/minicypher" },
+    { name = "minicypher", specifier = ">=0.1.1" },
     { name = "packaging", specifier = ">=24.2" },
     { name = "prefect", specifier = ">=3.1.15" },
     { name = "pyliquibase", specifier = ">=2.4.0" },
@@ -875,8 +875,12 @@ wheels = [
 
 [[package]]
 name = "minicypher"
-version = "0.1.0"
-source = { git = "https://github.com/CBIIT/minicypher#386bc24a07c3e9ce20cdb05f0b7158c1ca274fd5" }
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/db/adfac8265b0ce10320e610f5c802d4cd7d17b39d98aa15f34e4736ca4e72/minicypher-0.1.1.tar.gz", hash = "sha256:4651108c5c1a8f96b7582ea5156535f2b7738ed3f0de6490b9d5f1fe8a466dee", size = 13006 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/85/b9bc6cb7d2b4f8ed5e0c17e05ce7894fee855d0ce9a67bdd5f6069551e7c/minicypher-0.1.1-py3-none-any.whl", hash = "sha256:2cf711e55b4d1732fca754e94dd016dbd75c120db5bac71542e1d3a0b5bc5216", size = 11808 },
+]
 
 [[package]]
 name = "nanoid"

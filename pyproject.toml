@@ -14,16 +14,13 @@ dependencies = [
     "bento-meta>=0.2.12",
     "click>=8.1.8",
     "liquichange>=0.2.1",
-    "minicypher",
+    "minicypher>=0.1.1",
     "packaging>=24.2",
     "prefect>=3.1.15",
     "pyliquibase>=2.4.0",
     "pytest>=8.3.4",
     "stamina>=24.3.0",
 ]
-
-[tool.uv.sources]
-minicypher = { git = "https://github.com/CBIIT/minicypher" }
 
 [project.scripts]
 generate_model_version_matrix = "scripts.generate_model_version_matrix:main"
