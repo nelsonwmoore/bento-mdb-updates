@@ -39,8 +39,13 @@ jobs:
         run: |
           uv pip install --system -e .
           uv sync --all-extras --dev
-          which check new_mdfs || echo "Script not found"
+          which check_new_mdfs || echo "Script not found"
           ls -la $(which python | xargs dirname)
+
+      - name: Configure Git user
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
 
       - name: Run MDF Check Script
         env:
