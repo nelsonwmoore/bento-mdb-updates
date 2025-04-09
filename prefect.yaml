@@ -1,0 +1,11 @@
+pull:
+  - prefect.deployments.steps.git_clone:
+      id: clone-step
+      branch: main
+      repository: https://github.com/nelsonwmoore/bento-mdb-updates.git # will change to CBIIT/bento-mdb
+  
+  - prefect.deployments.steps.run_shell_script:
+      id: install-dependencies
+      script: |
+        # Install dependencies using the pre-installed uv
+        uv sync --frozen
