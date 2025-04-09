@@ -2,7 +2,7 @@ name: Check New MDFs
 
 on:
   schedule:
-    - cron: "0 0 * * *" # runs daily at midnight UTC (adjust as needed)
+    - cron: "0 0 * * *" # runs daily at midnight UTC
   workflow_dispatch:
     inputs:
       models_yaml_path:
@@ -21,6 +21,8 @@ on:
 jobs:
   check_new_mdfs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
