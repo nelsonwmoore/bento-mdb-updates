@@ -142,6 +142,7 @@ dev = [
     { name = "docker" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "pytest-docker" },
     { name = "testcontainers" },
 ]
 
@@ -164,6 +165,7 @@ dev = [
     { name = "docker", specifier = ">=7.1.0" },
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "pytest-docker", specifier = ">=3.2.1" },
     { name = "testcontainers", specifier = ">=4.9.2" },
 ]
 
@@ -1275,6 +1277,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/be/45/9b538de8cef30e17c7b45ef42f538a94889ed6a16f2387a6c89e73220651/pytest-cov-6.0.0.tar.gz", hash = "sha256:fde0b595ca248bb8e2d76f020b465f3b107c9632e6a1d1705f17834c89dcadc0", size = 66945 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/36/3b/48e79f2cd6a61dbbd4807b4ed46cb564b4fd50a76166b1c4ea5c1d9e2371/pytest_cov-6.0.0-py3-none-any.whl", hash = "sha256:eee6f1b9e61008bd34975a4d5bab25801eb31898b032dd55addc93e96fcaaa35", size = 22949 },
+]
+
+[[package]]
+name = "pytest-docker"
+version = "3.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dd/38/ba9344240455a09195863f2c4466468b41a08be0dff8c5611f7ec63f260d/pytest_docker-3.2.1.tar.gz", hash = "sha256:fc2cd9d1d317ac0854c140738182a60331fbcee8c0ef655b790e8f40a96e226f", size = 13499 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/22/8495ea7fbb9685efccb969e5139d564cbc5a8645b86278b28cbaa21bce0d/pytest_docker-3.2.1-py3-none-any.whl", hash = "sha256:ad1be411336959bee768b965c1c4949657e743eec9cf9e7a921fadf83ad97526", size = 8584 },
 ]
 
 [[package]]
