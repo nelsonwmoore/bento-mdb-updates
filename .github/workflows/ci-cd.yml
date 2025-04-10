@@ -9,23 +9,20 @@ jobs:
       - name: Check-out repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Install Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version-file: ".python-version"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           version: "0.5.10"
 
-      - name: Install dependencies
+      - name: Install dependencies and project
         run: |
+          uv pip install --system -e .
           uv sync --all-extras --dev
-
-      - name: Install project
-        run: |
-          uv pip install .
 
       - name: Test with pytest
         run: |

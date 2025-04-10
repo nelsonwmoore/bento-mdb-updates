@@ -44,25 +44,22 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version-file: ".python-version"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           version: "0.5.10"
 
-      - name: Install dependencies
+      - name: Install dependencies and project
         run: |
+          uv pip install --system -e .
           uv sync --all-extras --dev
-
-      - name: Install project
-        run: |
-          uv pip install .
       
       - name: Update terms
         id: update-terms
         run: |
-          AFFECTED_MODELS=$(python -m update_terms \
+          AFFECTED_MODELS=$(update_terms \
             --mdb_uri="${{ github.event.inputs.mdb_uri || secrets.NEO4J_MDB_URI }}" \
             --mdb_user="${{ github.event.inputs.mdb_user || secrets.NEO4J_MDB_USER }}" \
             --mdb_pass="${{ github.event.inputs.mdb_pass || secrets.NEO4J_MDB_PASS }}" \
@@ -76,7 +73,7 @@ jobs:
         id: filter-datahub-models
         if: steps.update-terms.outputs.affected_models
         run: |
-          FILTERED_MODELS=$(python filter_datahub_models.py \
+          FILTERED_MODELS=$(filter_datahub_models \
             --affected_models_json='${{ steps.update-terms.outputs.affected_models }}' \
             --model_specs_yaml=config/mdb_models.yml)
           
@@ -84,6 +81,8 @@ jobs:
 
   update-datahub-terms:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs: [update-mdb-terms]
     if: needs.update-mdb-terms.outputs.filtered_models != '[]'
     strategy:
@@ -98,20 +97,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version-file: ".python-version"
 
-      - name: Install dependencies
+      - name: Install dependencies and project
         run: |
+          uv pip install --system -e .
           uv sync --all-extras --dev
-  
-      - name: Install project
-        run: |
-          uv pip install .
 
       - name: Generate Permissible Values JSON
         id: generate-pv-json
         run: |
-          python get_pvs_json --model ${{ matrix.model.model }} --version ${{ matrix.model.version }} > ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json
+          get_pvs_json --model ${{ matrix.model.model }} --version ${{ matrix.model.version }} > ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json
           echo "Generated STS JSON for ${{ matrix.model.model }} version ${{ matrix.model.version }}"
       
       - name: Checkout crdc-datahub-terms repository

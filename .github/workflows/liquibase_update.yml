@@ -19,28 +19,27 @@ on:
 
 jobs:
   liquibase-update:
-    runs-on: ubuntu-latest    
+    runs-on: ubuntu-latest
+    outputs:
+        affected_models: ${{ steps.process-changelog.outputs.affected_models }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Install Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version-file: ".python-version"
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
           version: "0.5.10"
 
-      - name: Install dependencies
+      - name: Install dependencies and project
         run: |
+          uv pip install --system -e .
           uv sync --all-extras --dev
-
-      - name: Install project
-        run: |
-          uv pip install .
 
       - name: Get changed files
         id: changed-files
@@ -50,14 +49,121 @@ jobs:
             data/output/model_changelogs/**/*.xml
             data/output/term_changelogs/**/*.xml
 
-      - name: Liquibase update
+      - name: Process changelogs and identify affected models
+        id: process-changelogs
         env:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
         run: |
+          AFFECTED_MODELS="[]"
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo "Processing $file"
             prefect deployment run liquibase-update \
               --params "{\"mdb_uri\": \"${{ secrets.NEO4J_MDB_URI }}\", \"mdb_user\": \"${{ secrets.NEO4J_MDB_USER }}\", \"mdb_pass\": \"${{ secrets.NEO4J_MDB_PASS }}\", \"changelog_file\": \"$file\"}"
+          
+            if [[ $file == *"model_changelogs"*]]; then
+              FILENAME=$(basename $file)
+              MODEL_NAME=$(echo "$FILENAME" | cut -d'_' -f1)
+              VERSION=$(echo "$FILENAME" | grep -oP '.*changelog_\K[0-9]+\.[0-9]+(\.[0-9]+)?(?=\.xml)')
+
+              if [[ "$AFFECTED_MODELS" == "[]" ]]; then
+                AFFECTED_MODELS="[{\"model\": \"$MODEL_NAME\", \"version\": \"$VERSION\"}]"
+              else
+                AFFECTED_MODELS=$(echo $AFFECTED_MODELS | sed 's/\]/, {"model": "'$MODEL_NAME'", "version": "'$VERSION'"}\]/')
+              fi
+            fi
           done
-    
+
+          echo "affected_models=$AFFECTED_MODELS" >> $GITHUB_OUTPUT
+          echo "Affected models: $AFFECTED_MODELS"
+
+  filter-datahub-models:
+    runs-on: ubuntu-latest
+    needs: [liquibase-update]
+    outputs:
+      filtered_models: ${{ steps.filter-datahub-models.outputs.affected_models }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Filter affected datahub models
+        id: filter-datahub-models
+        if: needs.liquibase-update.outputs.affected_models != '[]'
+        run: |
+          FILTERED_MODELS=$(filter_datahub_models \
+            --affected_models_json='${{ needs.liquibase-update.outputs.affected_models }}' \
+            --model_specs_yaml=config/mdb_models.yml)
+          
+          echo "affected_models=$FILTERED_MODELS" >> $GITHUB_OUTPUT
+          echo "Filtered models: $FILTERED_MODELS"
+
+  update-datahub-terms:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: [filter-datahub-models]
+    if: needs.filter-datahub-models.outputs.filtered_models != '[]'
+    strategy:
+      matrix:
+        model: ${{ fromJson(needs.filter-datahub-models.outputs.filtered_models) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.10"
+
+      - name: Install dependencies and project
+        run: |
+          uv pip install --system -e .
+          uv sync --all-extras --dev
+
+      - name: Generate Permissible Values JSON
+        id: generate-pv-json
+        run: |
+          get_pvs_json --model ${{ matrix.model.model }} --version ${{ matrix.model.version }} > ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json
+          echo "Generated STS JSON for ${{ matrix.model.model }} version ${{ matrix.model.version }}"
+
+      - name: Checkout crdc-datahub-terms repository
+        uses: actions/checkout@v3
+        with:
+          repository: CBIIT/crdc-datahub-terms
+          ref: dev2
+          token: ${{ secrets.GH_PAT }}
+          path: datahub-terms-repo
+
+      - name: Copy report to crdc-datahub-terms repo
+        run: |
+          cp ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json datahub-terms-repo/
+          echo "Copied ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json to crdc-datahub-terms/ directory."
+
+      - name: Commit and push report
+        working-directory: datahub-terms-repo
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add ${{ matrix.model.model }}_${{ matrix.model.version }}_sts.json
+          git commit -m "Update STS JSON for ${{ matrix.model.model }}_v${{ matrix.model.version }}"
+          git push

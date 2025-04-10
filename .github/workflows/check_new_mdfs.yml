@@ -41,8 +41,6 @@ jobs:
         run: |
           uv pip install --system -e .
           uv sync --all-extras --dev
-          which check_new_mdfs || echo "Script not found"
-          ls -la $(which python | xargs dirname)
 
       - name: Configure Git user
         run: |
