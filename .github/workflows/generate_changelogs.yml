@@ -24,18 +24,6 @@ on:
         description: "Path or URL to specific MDF files to process"
         required: false
         default: ""
-      mdb_uri:
-        description: "URI for Neo4j MDB instance"
-        required: false
-        default: ""
-      mdb_user:
-        description: "Username for Neo4j MDB"
-        required: false
-        default: ""
-      mdb_pass:
-        description: "Password for Neo4j MDB"
-        required: false
-        default: ""
       datahub_only:
         description: "Only include datahub models"
         required: false
@@ -73,9 +61,9 @@ jobs:
             echo "{\"include\": [{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files || '[]' }}]}]}" > matrix.json
           else
             generate_model_version_matrix \
-              --mdb_uri="${{ github.event.inputs.mdb_uri || secrets.NEO4J_MDB_URI }}" \
-              --mdb_user="${{ github.event.inputs.mdb_user || secrets.NEO4J_MDB_USER }}" \
-              --mdb_pass="${{ github.event.inputs.mdb_pass || secrets.NEO4J_MDB_PASS }}" \
+              --mdb_uri="${{ secrets.NEO4J_MDB_URI }}" \
+              --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
+              --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \
               --model_specs_yaml="${{ github.event.inputs.models_spec_path }}" \
               --datahub_only="${{ github.event.inputs.datahub_only }}" \
               > matrix.json

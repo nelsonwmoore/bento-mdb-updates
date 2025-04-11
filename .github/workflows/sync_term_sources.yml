@@ -5,18 +5,6 @@ on:
     - cron: "0 0 * * 0" # runs every Sunday at midnight UTC
   workflow_dispatch:
     inputs:
-      mdb_uri:
-        description: "URI for Neo4j MDB instance"
-        required: false
-        default: ""
-      mdb_user:
-        description: "Username for Neo4j MDB"
-        required: false
-        default: ""
-      mdb_pass:
-        description: "Password for Neo4j MDB"
-        required: false
-        default: ""
       author:
         description: "Author name for changes"
         required: false
@@ -55,9 +43,9 @@ jobs:
         id: update-terms
         run: |
           RESULT=$(update_terms \
-            --mdb_uri="${{ github.event.inputs.mdb_uri || secrets.NEO4J_MDB_URI }}" \
-            --mdb_user="${{ github.event.inputs.mdb_user || secrets.NEO4J_MDB_USER }}" \
-            --mdb_pass="${{ github.event.inputs.mdb_pass || secrets.NEO4J_MDB_PASS }}" \
+            --mdb_uri="${{ secrets.NEO4J_MDB_URI }}" \
+            --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
+            --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \
             --author="${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
             --_commit="${{ github.event.inputs.commit_sha || github.sha }}")
 
