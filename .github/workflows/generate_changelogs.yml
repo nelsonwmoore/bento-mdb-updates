@@ -1,4 +1,4 @@
-name: Generate and Commit Liquibase Changelogs
+name: Generate and Commit Model Updates Changelogs
 
 on:
   push:
@@ -29,7 +29,7 @@ jobs:
   determine-models:
     runs-on: ubuntu-latest
     outputs:
-      model_matrix: ${{ steps.set-matrix.outputs.model_matrix }}
+      affected_models: ${{ steps.set-matrix.outputs.model_matrix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -54,18 +54,21 @@ jobs:
         run: |
           # If specific model/version/mdfs provided, use them; otherwise, generate the full matrix.
           if [ "${{ github.event.inputs.model }}" != "" ] && [ "${{ github.event.inputs.version }}" != "" ]; then
-            echo "{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files }}]}" > matrix.json
+            echo "{\"include\": [{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files || '[]' }}]}]}" > matrix.json
           else
             generate_model_version_matrix "${{ github.event.inputs.models_spec_path }}" > matrix.json
           fi
           MATRIX=$(cat matrix.json)
           echo "model_matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Affected models: $MATRIX"
 
   generate-changelogs:
     needs: determine-models
     runs-on: ubuntu-latest
+    outputs:
+      changelog_files: ${{ steps.collect-changelogs.outputs.changelog_files }}
     strategy:
-      matrix: ${{ fromJson(needs.determine-models.outputs.model_matrix) }}
+      matrix: ${{ fromJson(needs.determine-models.outputs.affected_models) }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -90,9 +93,13 @@ jobs:
           set -e
 
           MDF_FILES_OPTIONS=""
-          for file in $(echo '${{ matrix.mdf_files }}' | jq -r '.[]'); do
-            MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
-          done
+          if [ -n "${{ toJson(matrix.mdf_files) }}" ] && [ "${{ toJson(matrix.mdf_files) }}" != "null" ] && [ "${{ toJson(matrix.mdf_files) }}" != "[]" ]; then
+            for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
+              MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
+            done
+          fi
+
+          mkdir -p data/output/model_changelogs/${{ matrix.model }}/
 
           make_model_changelogs \
           --model_handle="${{ matrix.model }}" \
@@ -108,9 +115,13 @@ jobs:
           set -e
 
           MDF_FILES_OPTIONS=""
-          for file in $(echo '${{ matrix.mdf_files }}' | jq -r '.[]'); do
-            MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
-          done
+          if [ -n "${{ toJson(matrix.mdf_files) }}" ] && [ "${{ toJson(matrix.mdf_files) }}" != "null" ] && [ "${{ toJson(matrix.mdf_files) }}" != "[]" ]; then
+            for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
+              MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
+            done
+          fi
+
+          mkdir -p data/output/model_cde_pvs/${{ matrix.model }}/
 
           get_pvs_and_synonyms \
           --model_handle="${{ matrix.model }}" \
@@ -123,12 +134,70 @@ jobs:
           --model_handle="${{ matrix.model }}" \
           --model_version="${{ matrix.version }}"
 
+      - name: Collect Changelog Files
+        id: collect-changelogs
+        run : |
+          CHANGELOG_FILE="data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml"
+          CDE_CHANGELOG_FILE="data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml"
+          # Check if files exist
+          CHANGELOG_FILES="[]"
+          if [ -f "$CHANGELOG_FILE" ] && [ -f "$CDE_CHANGELOG_FILE" ]; then
+            CHANGELOG_FILES="[\"$CHANGELOG_FILE\", \"$CDE_CHANGELOG_FILE\"]"
+          elif [ -f "$CHANGELOG_FILE" ]; then
+            CHANGELOG_FILES="[\"$CHANGELOG_FILE\"]" 
+          elif [ -f "$CDE_CHANGELOG_FILE" ]; then
+            CHANGELOG_FILES="[\"$CDE_CHANGELOG_FILE\"]"
+          fi
+          
+          echo "changelog_files=$CHANGELOG_FILES" >> $GITHUB_OUTPUT
+          echo "Generated changelog files: $CHANGELOG_FILES"
+
       - name: Commit Generated Files
         run: |
-          git config --global user.name "GitHub Actions"
+          git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml
-          git add data/output/model_cde_pvs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cdes.yml
-          git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml
-          git commit -m "Add new files for ${{ matrix.model }} v${{ matrix.version }}"
-          git push
+          
+          if [ -f "data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" ]; then
+            git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml
+          fi
+          
+          if [ -f "data/output/model_cde_pvs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cdes.yml" ]; then
+            git add data/output/model_cde_pvs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cdes.yml
+          fi
+          
+          if [ -f "data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml" ]; then
+            git add data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml
+          fi
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Add new files for ${{ matrix.model }} v${{ matrix.version }}"
+            git push
+          else
+            echo "No changes to commit"
+          fi
+
+  collect-all-changelogs:
+    needs: [generate-changelogs]
+    runs-on: ubuntu-latest
+    outputs:
+      all_changelog_files: ${{ steps.collect-all.outputs.all_changelog_files }}
+    steps:
+      - name: Collect All Changelog Files
+        id: collect-all
+        run: |
+          ALL_CHANGELOGS='${{ needs.generate-changelogs.outputs.changelog_files }}'
+          # Ensure it's a valid JSON array
+          if [ -z "$ALL_CHANGELOGS" ] || [ "$ALL_CHANGELOGS" == "null" ]; then
+            ALL_CHANGELOGS="[]"
+          fi
+          echo "all_changelog_files=$ALL_CHANGELOGS" >> $GITHUB_OUTPUT
+          echo "All changelog files: $ALL_CHANGELOGS"
+
+  liquibase-update:
+    needs: [determine-models, collect-all-changelogs]
+    if: needs.determine-models.outputs.affected_models != '{}' && needs.determine-models.outputs.affected_models != '[]' && needs.collect-all-changelogs.outputs.all_changelog_files != '[]'
+    uses: ./.github/workflows/liquibase_update.yml
+    secrets: inherit
+    with:
+      changelog_files: ${{ needs.collect-all-changelogs.outputs.all_changelog_files }}
+      affected_models: ${{ needs.determine-models.outputs.affected_models }}

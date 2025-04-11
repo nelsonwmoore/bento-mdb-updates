@@ -34,15 +34,17 @@ def main() -> None:
         mdb,
         datahub_only=datahub_only,
     )
-    matrix = [
-        {
-            "model": model,
-            "version": version,
-            "mdf_files": get_yaml_files_from_spec(model_specs[model], version),
-        }
-        for model, versions in models_to_update.items()
-        for version in versions
-    ]
+    matrix = {
+        "include": [
+            {
+                "model": model,
+                "version": version,
+                "mdf_files": get_yaml_files_from_spec(model_specs[model], version),
+            }
+            for model, versions in models_to_update.items()
+            for version in versions
+        ]
+    }
     print(json.dumps(matrix))  # noqa: T201
 
 

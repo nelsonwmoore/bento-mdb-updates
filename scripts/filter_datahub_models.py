@@ -27,7 +27,13 @@ def main(affected_models_json: str, model_specs_yaml: str) -> None:
     """Filter models to only those in datahub."""
     model_specs = load_model_specs_from_yaml(Path(model_specs_yaml))
     # Parse the JSON string
-    affected_models_list = json.loads(affected_models_json)
+    affected_models = json.loads(affected_models_json)
+    if isinstance(affected_models, dict):
+        affected_models_list = affected_models.get("include", [])
+    elif isinstance(affected_models, list):
+        affected_models_list = affected_models
+    else:
+        raise ValueError("Invalid affected_models_json")
 
     filtered_models = [
         model

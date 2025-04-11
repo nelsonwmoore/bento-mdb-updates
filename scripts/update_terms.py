@@ -131,11 +131,17 @@ def main(
     with output_file.open("w", encoding="utf-8") as f:
         json.dump(mdb_cdes, f, indent=2)
 
-    # Print affected models as JSON for GitHub Actions
-    affected_models_json = json.dumps(
-        [{"model": model, "version": version} for model, version in affected_models],
-    )
-    print(affected_models_json)  # noqa: T201
+    # Print affected models and changlog file as JSON for GitHub Actions
+    result = {
+        "affected_models": json.dumps(
+            [
+                {"model": model, "version": version}
+                for model, version in affected_models
+            ],
+        ),
+        "changelog_files": json.dumps([str(changelog_file)]),
+    }
+    print(result)  # noqa: T201
 
 
 if __name__ == "__main__":
