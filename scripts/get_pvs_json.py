@@ -48,6 +48,27 @@ QUERY = (
 
 @click.command()
 @click.option(
+    "--mdb_uri",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database URI",
+)
+@click.option(
+    "--mdb_user",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database username",
+)
+@click.option(
+    "--mdb_pass",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database password",
+)
+@click.option(
     "-m",
     "--model",
     required=True,
@@ -63,12 +84,12 @@ QUERY = (
     prompt=True,
     help="CRDC Model Version (e.g. '1.2.3')",
 )
-def main(model: str, version: str) -> None:
+def main(mdb_uri: str, mdb_user: str, mdb_pass: str, model: str, version: str) -> None:
     """Do stuff."""
     mdb = MDB(
-        uri=os.environ.get("NEO4J_MDB_URI"),
-        user=os.environ.get("NEO4J_MDB_USER"),
-        password=os.environ.get("NEO4J_MDB_PASS"),
+        uri=mdb_uri or os.environ.get("NEO4J_MDB_URI"),
+        user=mdb_user or os.environ.get("NEO4J_MDB_USER"),
+        password=mdb_pass or os.environ.get("NEO4J_MDB_PASS"),
     )
     parms = {"dataCommons": model, "version": version}
     result = mdb.get_with_statement(QUERY, parms)

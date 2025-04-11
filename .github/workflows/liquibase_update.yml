@@ -118,7 +118,13 @@ jobs:
             VERSION=$(_jq '.version')
             
             echo "Generating CDE PV & Synonym JSON for $MODEL version $VERSION"
-            get_pvs_json --model $MODEL --version $VERSION > sts_json_files/${MODEL}_${VERSION}_sts.json
+            get_pvs_json \
+            --mdb_uri="${{ secrets.NEO4J_MDB_URI }}" \
+            --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
+            --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \
+            --model "$MODEL" \
+            --version "$VERSION" \
+            > sts_json_files/${MODEL}_${VERSION}_sts.json
           done
           
           # List generated files

@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import click
 
 from bento_mdb_updates.model_cdes import load_model_specs_from_yaml
+
+logger = logging.getLogger(__name__)
 
 
 @click.command()
@@ -28,6 +31,7 @@ def main(affected_models_json: str, model_specs_yaml: str) -> None:
     model_specs = load_model_specs_from_yaml(Path(model_specs_yaml))
     # Parse the JSON string
     affected_models = json.loads(affected_models_json)
+    logger.info(f"affected_models_json: {affected_models}")
     if isinstance(affected_models, dict):
         affected_models_list = affected_models.get("include", [])
     elif isinstance(affected_models, list):

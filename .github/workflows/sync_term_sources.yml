@@ -30,8 +30,8 @@ jobs:
   update-mdb-terms:
     runs-on: ubuntu-latest
     outputs:
-      affected_models: $ {{ steps.update-terms.outputs.affected_models }}
-      changelog_files: $ {{ steps.update-terms.outputs.changelog_files }}
+      affected_models: ${{ steps.update-terms.outputs.affected_models }}
+      changelog_files: ${{ steps.update-terms.outputs.changelog_files }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3

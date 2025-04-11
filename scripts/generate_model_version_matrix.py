@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 
+import click
 import dotenv
 from bento_meta.mdb import MDB
 
@@ -19,15 +20,55 @@ from bento_mdb_updates.model_cdes import (
 dotenv.load_dotenv(Path("config/.env"), override=True)
 
 
-def main() -> None:
+@click.command()
+@click.option(
+    "--mdb_uri",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database URI",
+)
+@click.option(
+    "--mdb_user",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database username",
+)
+@click.option(
+    "--mdb_pass",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database password",
+)
+@click.option(
+    "--model_specs_yaml",
+    required=True,
+    type=str,
+    prompt=True,
+    help="path to model specs yaml file",
+)
+@click.option(
+    "--datahub_only",
+    required=False,
+    type=bool,
+    default=False,
+    help="only include datahub models",
+)
+def main(
+    mdb_uri: str,
+    mdb_user: str,
+    mdb_pass: str,
+    model_specs_yaml: str,
+    datahub_only: bool,
+) -> None:
     """Generate matrix with models/versions to be added to MDB."""
-    model_specs_yaml = Path("config/mdb_models.yml")
-    datahub_only = True
-    model_specs = load_model_specs_from_yaml(model_specs_yaml)
+    model_specs = load_model_specs_from_yaml(Path(model_specs_yaml))
     mdb = MDB(
-        uri=os.environ.get("NEO4J_MDB_URI"),
-        user=os.environ.get("NEO4J_MDB_USER"),
-        password=os.environ.get("NEO4J_MDB_PASS"),
+        uri=mdb_uri or os.environ.get("NEO4J_MDB_URI"),
+        user=mdb_user or os.environ.get("NEO4J_MDB_USER"),
+        password=mdb_pass or os.environ.get("NEO4J_MDB_PASS"),
     )
     models_to_update = compare_model_specs_to_mdb(
         model_specs,
