@@ -32,6 +32,8 @@ def set_defaults_file(
         f.write(f"url: {uri}\n")
         f.write(f"username: {user}\n")
         f.write(f"password: {password}\n")
+        f.write("classpath: ./app/drivers/liquibase-neo4j-4.31.1-full.jar\n")
+        f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver")
         temp_file_path = Path(f.name)
     temp_file_path.chmod(stat.S_IRUSR | stat.S_IWUSR)  # User read/write only
     return temp_file_path
@@ -103,9 +105,22 @@ def liquibase_update_flow(
     default=False,
     help="Dry run flag",
 )
-def main(**kwargs) -> None:
+def main(
+    mdb_uri: str,
+    mdb_user: str,
+    mdb_pass: str,
+    changelog_file: str,
+    *,
+    dry_run: bool = False,
+) -> None:
     """Run Liquibase Update on Changelog."""
-    liquibase_update_flow(**kwargs)
+    liquibase_update_flow(
+        mdb_uri=mdb_uri,
+        mdb_user=mdb_user,
+        mdb_pass=mdb_pass,
+        changelog_file=changelog_file,
+        dry_run=dry_run,
+    )
 
 
 if __name__ == "__main__":

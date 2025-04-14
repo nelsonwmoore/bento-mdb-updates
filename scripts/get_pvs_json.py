@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 import dotenv
 from bento_meta.mdb.mdb import MDB
+from prefect import flow
 
 dotenv.load_dotenv(Path("config/.env"), override=True)
 
@@ -44,6 +45,25 @@ QUERY = (
     "prop AS property, CDECode, CDEVersion, CDEFullName, "
     "formatted_pvs AS permissibleValues"
 )
+
+
+@flow(name="get-pvs-json")
+def get_pvs_json(
+    mdb_uri: str, mdb_user: str, mdb_pass: str, model: str, version: str
+) -> None:
+    """Get JSON from MDB with CDE PVs and Synonyms in Data Hub format."""
+    mdb = MDB(
+        uri=mdb_uri or os.environ.get("NEO4J_MDB_URI"),
+        user=mdb_user or os.environ.get("NEO4J_MDB_USER"),
+        password=mdb_pass or os.environ.get("NEO4J_MDB_PASS"),
+    )
+    parms = {"dataCommons": model, "version": version}
+    result = mdb.get_with_statement(QUERY, parms)
+    processed = [
+        {**item, "property": item.get("property", {}).get("handle", "")}
+        for item in result
+    ]
+    print(json.dumps(processed, indent=2))  # noqa: T201
 
 
 @click.command()
@@ -85,19 +105,14 @@ QUERY = (
     help="CRDC Model Version (e.g. '1.2.3')",
 )
 def main(mdb_uri: str, mdb_user: str, mdb_pass: str, model: str, version: str) -> None:
-    """Do stuff."""
-    mdb = MDB(
-        uri=mdb_uri or os.environ.get("NEO4J_MDB_URI"),
-        user=mdb_user or os.environ.get("NEO4J_MDB_USER"),
-        password=mdb_pass or os.environ.get("NEO4J_MDB_PASS"),
+    """Get JSON from MDB with CDE PVs and Synonyms in Data Hub format."""
+    get_pvs_json(
+        mdb_uri=mdb_uri,
+        mdb_user=mdb_user,
+        mdb_pass=mdb_pass,
+        model=model,
+        version=version,
     )
-    parms = {"dataCommons": model, "version": version}
-    result = mdb.get_with_statement(QUERY, parms)
-    processed = [
-        {**item, "property": item.get("property", {}).get("handle", "")}
-        for item in result
-    ]
-    print(json.dumps(processed, indent=2))  # noqa: T201
 
 
 if __name__ == "__main__":

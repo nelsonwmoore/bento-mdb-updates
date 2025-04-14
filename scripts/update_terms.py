@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 import click
 from bento_meta.mdb.mdb import MDB
 from dotenv import load_dotenv
+from prefect import flow
 
 from bento_mdb_updates.cde_cypher import convert_model_cdes_to_changelog
 from bento_mdb_updates.clients import CADSRClient, NCItClient
@@ -27,49 +28,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@click.command()
-@click.option(
-    "--mdb_uri",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database URI",
-)
-@click.option(
-    "--mdb_user",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database username",
-)
-@click.option(
-    "--mdb_pass",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database password",
-)
-@click.option(
-    "-a",
-    "--author",
-    required=True,
-    type=str,
-    help="Author for changeset",
-)
-@click.option(
-    "--output-file",
-    required=False,
-    type=str,
-    help="Output file path for MDB CDE JSON (defaults to data/output/mdb_cdes/mdb_cdes_<date>.json)",
-)
-@click.option(
-    "-c",
-    "--_commit",
-    required=False,
-    type=str,
-    help="Commit string",
-)
-def main(
+@flow(name="update-terms")
+def update_terms(
     mdb_uri: str,
     mdb_user: str,
     mdb_pass: str,
@@ -142,6 +102,67 @@ def main(
         "changelog_files": json.dumps([str(changelog_file)]),
     }
     print(result)  # noqa: T201
+
+
+@click.command()
+@click.option(
+    "--mdb_uri",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database URI",
+)
+@click.option(
+    "--mdb_user",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database username",
+)
+@click.option(
+    "--mdb_pass",
+    required=True,
+    type=str,
+    prompt=True,
+    help="metamodel database password",
+)
+@click.option(
+    "-a",
+    "--author",
+    required=True,
+    type=str,
+    help="Author for changeset",
+)
+@click.option(
+    "--output-file",
+    required=False,
+    type=str,
+    help="Output file path for MDB CDE JSON (defaults to data/output/mdb_cdes/mdb_cdes_<date>.json)",
+)
+@click.option(
+    "-c",
+    "--_commit",
+    required=False,
+    type=str,
+    help="Commit string",
+)
+def main(
+    mdb_uri: str,
+    mdb_user: str,
+    mdb_pass: str,
+    author: str,
+    output_file: str | Path | None = None,
+    _commit: str | None = None,
+) -> None:
+    """Check for new CDE PVs and syonyms and generate Cypher to update the database."""
+    update_terms(
+        mdb_uri=mdb_uri,
+        mdb_user=mdb_user,
+        mdb_pass=mdb_pass,
+        author=author,
+        output_file=output_file,
+        _commit=_commit,
+    )
 
 
 if __name__ == "__main__":
