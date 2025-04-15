@@ -48,15 +48,15 @@ def update_terms(
     affected_models: set[tuple[str, str]] = set()
 
     # debugging paths
-    print(f"Current working directory: {os.getcwd()}")
-    print(f"Directory contents: {os.listdir('.')}")
+    logger.debug(f"Current working directory: {os.getcwd()}")
+    logger.debug(f"Directory contents: {os.listdir('.')}")
     try:
         data_dir_contents = os.listdir("data")
-        print(f"Data directory contents: {data_dir_contents}")
+        logger.debug(f"Data directory contents: {data_dir_contents}")
     except FileNotFoundError:
-        print("Data directory not found")
+        logger.debug("Data directory not found")
     except Exception as e:
-        print(f"Error checking data directory: {e}")
+        logger.debug(f"Error checking data directory: {e}")
     os.makedirs(output_file.parent, exist_ok=True)
 
     # Get current MDB CDE Pvs & Synonyms
