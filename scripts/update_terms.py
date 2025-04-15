@@ -35,7 +35,7 @@ def update_terms(
     mdb_pass: str,
     author: str,
     output_file: str | Path | None = None,
-    _commit: str | None = None,
+    commit: str | None = None,
 ) -> None:
     """Check for new CDE PVs and syonyms and generate Cypher to update the database."""
     # Setup
@@ -82,7 +82,7 @@ def update_terms(
         affected_models.update(ncit_models)
 
     # convert annotation updates to liquibase changelog
-    changelog = convert_model_cdes_to_changelog(update_cde_spec, author, _commit)
+    changelog = convert_model_cdes_to_changelog(update_cde_spec, author, commit)
     output_dir = Path().cwd() / "data/output/term_changelogs"
     changelog_file = output_dir / f"{today}_term_updates.xml"
     changelog.save_to_file(str(changelog_file), encoding="UTF-8")
@@ -141,7 +141,7 @@ def update_terms(
 )
 @click.option(
     "-c",
-    "--_commit",
+    "--commit",
     required=False,
     type=str,
     help="Commit string",
@@ -152,7 +152,7 @@ def main(
     mdb_pass: str,
     author: str,
     output_file: str | Path | None = None,
-    _commit: str | None = None,
+    commit: str | None = None,
 ) -> None:
     """Check for new CDE PVs and syonyms and generate Cypher to update the database."""
     update_terms(
@@ -161,7 +161,7 @@ def main(
         mdb_pass=mdb_pass,
         author=author,
         output_file=output_file,
-        _commit=_commit,
+        commit=commit,
     )
 
 

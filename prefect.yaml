@@ -1,11 +1,38 @@
+name: mdb-updates
+prefect-version: 3.1.15
+
 pull:
-  - prefect.deployments.steps.git_clone:
-      id: clone-step
-      branch: main
-      repository: https://github.com/nelsonwmoore/bento-mdb-updates.git # will change to CBIIT/bento-mdb
-  
-  - prefect.deployments.steps.run_shell_script:
-      id: install-dependencies
-      script: |
-        # Install dependencies using the pre-installed uv
-        uv sync --frozen
+- prefect.deployments.steps.git_clone:
+    id: clone-step
+    branch: main
+    repository: https://github.com/nelsonwmoore/bento-mdb-updates.git   # will change to CBIIT/bento-mdb
+- prefect.deployments.steps.run_shell_script:
+    id: install-dependencies
+    script: sh -c "cd bento-mdb-updates-main && uv pip install --system . && uv sync --frozen"
+
+work_pool:
+  name: mdb-docker-pool
+  job_variables: prefect-worker:latest
+  image_pull_policy: Never
+deployments:
+- name: update-terms-test3
+  version:
+  tags: []
+  concurrency_limit:
+  description: Check for new CDE PVs and syonyms and generate Cypher to update the
+    database.
+  entrypoint: scripts/update_terms.py:update_terms
+  parameters: {}
+  work_pool:
+    name: mdb-docker-pool
+    work_queue_name:
+    job_variables:
+      image: '{{ build-image.image }}'
+  schedules: []
+  build:
+  - prefect_docker.deployments.steps.build_docker_image:
+      requires: prefect-docker>=0.3.1
+      id: build-image
+      dockerfile: Dockerfile
+      image_name: nelsonwmoore/prefect-worker
+      tag: latest
