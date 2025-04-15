@@ -45,19 +45,8 @@ def update_terms(
         output_file = Path(f"data/output/mdb_cdes/mdb_cdes_{today}.json")
     else:
         output_file = Path(output_file)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
     affected_models: set[tuple[str, str]] = set()
-
-    # debugging paths
-    logger.debug(f"Current working directory: {os.getcwd()}")
-    logger.debug(f"Directory contents: {os.listdir('.')}")
-    try:
-        data_dir_contents = os.listdir("data")
-        logger.debug(f"Data directory contents: {data_dir_contents}")
-    except FileNotFoundError:
-        logger.debug("Data directory not found")
-    except Exception as e:
-        logger.debug(f"Error checking data directory: {e}")
-    os.makedirs(output_file.parent, exist_ok=True)
 
     # Get current MDB CDE Pvs & Synonyms
     mdb = MDB(
@@ -97,6 +86,7 @@ def update_terms(
     changelog = convert_model_cdes_to_changelog(update_cde_spec, author, commit)
     output_dir = Path().cwd() / "data/output/term_changelogs"
     changelog_file = output_dir / f"{today}_term_updates.xml"
+    changelog_file.parent.mkdir(parents=True, exist_ok=True)
     changelog.save_to_file(str(changelog_file), encoding="UTF-8")
 
     # Update mdb_cdes JSON file
