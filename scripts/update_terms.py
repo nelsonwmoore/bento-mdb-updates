@@ -47,6 +47,18 @@ def update_terms(
         output_file = Path(output_file)
     affected_models: set[tuple[str, str]] = set()
 
+    # debugging paths
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Directory contents: {os.listdir('.')}")
+    try:
+        data_dir_contents = os.listdir("data")
+        print(f"Data directory contents: {data_dir_contents}")
+    except FileNotFoundError:
+        print("Data directory not found")
+    except Exception as e:
+        print(f"Error checking data directory: {e}")
+    os.makedirs(output_file.parent, exist_ok=True)
+
     # Get current MDB CDE Pvs & Synonyms
     mdb = MDB(
         uri=mdb_uri or os.environ.get("NEO4J_MDB_URI"),
