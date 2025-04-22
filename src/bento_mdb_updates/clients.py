@@ -62,7 +62,10 @@ class CADSRClient:
         """Get value set from JSON response."""
         try:
             vs = []
-            cde_pvs = json_response["DataElement"]["ValueDomain"]["PermissibleValues"]
+            cde_pvs = json_response["DataElement"]["ValueDomain"].get(
+                "PermissibleValues",
+                [],
+            )
             if not cde_pvs:
                 logger.warning(
                     "No permissible values found for CDE %s v%s",
@@ -80,10 +83,19 @@ class CADSRClient:
                     "ncit_concept_codes": [],
                     "synonyms": [],
                 }
-                for concept in pv["ValueMeaning"]["Concepts"]:
+                for concept in pv["ValueMeaning"].get("Concepts", []):
                     if concept.get("evsSource") != "NCI_CONCEPT_CODE":
                         continue
                     pv_dict["ncit_concept_codes"].append(concept["conceptCode"])
+                    if len(pv["ValueMeaning"]["Concepts"]) > 1:
+                        msg = "Multiple NCIt concepts found for PV %s: %sv%s"
+                        logger.warning(
+                            msg,
+                            pv["value"],
+                            pv["ValueMeaning"]["publicId"],
+                            pv["ValueMeaning"]["version"],
+                        )
+                        continue
                     pv_dict["synonyms"].append(
                         {
                             "value": concept["longName"],
@@ -94,7 +106,7 @@ class CADSRClient:
                     )
                 vs.append(pv_dict)
         except Exception as e:
-            msg = f"Exception occurred when getting value set from JSON: {e}\n{json_response}"
+            msg = f"Exception occurred when getting value set from JSON: {e}"
             logger.exception(msg)
             return []
         else:
@@ -219,7 +231,8 @@ class NCItClient:
         response.raise_for_status()
 
         match = re.search(
-            r"NCIm version:\s*(\d{6})", response.text.splitlines()[0].strip()
+            r"NCIm version:\s*(\d{6})",
+            response.text.splitlines()[0].strip(),
         )
         return (
             datetime.datetime.strptime(
@@ -231,7 +244,9 @@ class NCItClient:
         )
 
     def download_and_extract_tsv(
-        self, tsv_filename: str = DEFAULT_NCIM_TSV.name, save_path: Path | None = None
+        self,
+        tsv_filename: str = DEFAULT_NCIM_TSV.name,
+        save_path: Path | None = None,
     ) -> dict:
         """Download and extract NCIt mappings TSV file from self.zip_url."""
         if not self.zip_url:

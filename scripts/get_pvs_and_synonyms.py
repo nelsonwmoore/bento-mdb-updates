@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 
 import click
-import dotenv
 from bento_mdf.mdf import MDF
 
 from bento_mdb_updates.clients import CADSRClient, NCItClient
@@ -19,7 +18,7 @@ from bento_mdb_updates.model_cdes import (
     make_model_cde_spec,
 )
 
-dotenv.load_dotenv(Path("config/.env"), override=True)
+logger = logging.getLogger(__name__)
 
 
 @click.command()
@@ -53,7 +52,7 @@ def main(model_handle: str, model_version: str, mdf_files: str | list[str]) -> N
     cadsr_client = CADSRClient()
 
     # get CDEs from model files
-    logging.info("Getting CDEs from %s v%s MDFs...", model_handle, model_version)
+    logger.info("Getting CDEs from %s v%s MDFs...", model_handle, model_version)
     mdf = MDF(*mdf_files, handle=model_handle, raise_error=True)
     model = mdf.model
     (f"{model_handle} v{model_version} has {count_model_cdes(model)} CDEs.")

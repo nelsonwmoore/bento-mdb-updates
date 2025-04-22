@@ -27,6 +27,7 @@ def model_matrix_flow(
     mdb_user: str,
     mdb_pass: str,
     model_specs_yaml: str,
+    *,
     datahub_only: bool,
 ) -> None:
     """Generate matrix with models/versions to be added to MDB."""
@@ -50,7 +51,7 @@ def model_matrix_flow(
             }
             for model, versions in models_to_update.items()
             for version in versions
-        ]
+        ],
     }
     print(json.dumps(matrix))  # noqa: T201
 
@@ -96,6 +97,7 @@ def main(
     mdb_user: str,
     mdb_pass: str,
     model_specs_yaml: str,
+    *,
     datahub_only: bool,
 ) -> None:
     """Generate matrix with models/versions to be added to MDB."""

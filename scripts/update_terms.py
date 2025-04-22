@@ -37,7 +37,7 @@ def update_terms(
     output_file: str | Path | None = None,
     commit: str | None = None,
 ) -> None:
-    """Check for new CDE PVs and syonyms and generate Cypher to update the database."""
+    """Check for new CDE PVs and synonyms and generate Cypher to update the database."""
     # Setup
     load_dotenv(Path("config/.env"), override=True)
     today = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
@@ -76,10 +76,10 @@ def update_terms(
     # check NCIt for new PV synonyms
     if ncit_client.check_ncit_for_updated_mappings(force_update=True):
         logger.info("Checking NCIt for new PV synonyms...")
-        ncit_annotaitons, ncit_models = ncit_client.check_synonyms_against_mdb(
+        ncit_annotations, ncit_models = ncit_client.check_synonyms_against_mdb(
             mdb_cdes,
         )
-        update_cde_spec["annotations"].extend(ncit_annotaitons)
+        update_cde_spec["annotations"].extend(ncit_annotations)
         affected_models.update(ncit_models)
 
     # convert annotation updates to liquibase changelog

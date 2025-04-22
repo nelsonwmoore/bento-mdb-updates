@@ -147,6 +147,13 @@ def add_ncit_synonyms_to_model_cde_spec(
             if pv is None:
                 continue
             ncit_concept_codes = pv["ncit_concept_codes"]
+            if len(ncit_concept_codes) > 1:
+                msg = "Multiple NCIt concepts found for PV: %s: %s"
+                logger.warning(
+                    msg,
+                    pv["value"],
+                    ncit_concept_codes,
+                )
             for code in ncit_concept_codes:
                 if not code or code not in ncit_client.ncim_mapping:
                     continue

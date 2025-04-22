@@ -33,7 +33,8 @@ def set_defaults_file(
         f.write(f"username: {user}\n")
         f.write(f"password: {password}\n")
         f.write("classpath: ./app/drivers/liquibase-neo4j-4.31.1-full.jar\n")
-        f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver")
+        f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver\n")
+        f.write("logLevel: info\n")
         temp_file_path = Path(f.name)
     temp_file_path.chmod(stat.S_IRUSR | stat.S_IWUSR)  # User read/write only
     return temp_file_path

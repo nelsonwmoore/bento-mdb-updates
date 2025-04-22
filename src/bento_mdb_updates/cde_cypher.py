@@ -68,15 +68,24 @@ def convert_annotation_to_changesets(
         )
         if not synonyms:
             continue
-        for syn_attrs in synonyms:
+        ncit_term = Term(synonyms[0])  # first synonym is NCIt concept from caDSR
+        statements.append(create_entity_cypher_stmt(ncit_term)[0])
+        statements.append(
+            generate_cypher_to_link_term_synonyms(
+                pv_term,
+                ncit_term,
+                "caDSR",
+                _commit,
+            ),
+        )
+        for syn_attrs in synonyms[1:]:  # rest from NCIm mappings
             syn_term = Term(syn_attrs)
-            mapping_source = "caDSR" if syn_term.origin_name == "NCIt" else "NCIm"
             statements.append(create_entity_cypher_stmt(syn_term)[0])
             statements.append(
                 generate_cypher_to_link_term_synonyms(
-                    pv_term,
+                    ncit_term,
                     syn_term,
-                    mapping_source,
+                    "NCIm",
                     _commit,
                 ),
             )
