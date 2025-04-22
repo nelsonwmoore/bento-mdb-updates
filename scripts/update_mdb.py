@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import stat
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -16,6 +17,31 @@ from pyliquibase import Pyliquibase
 
 load_dotenv(override=True, dotenv_path="config/.env")
 logger = logging.getLogger(__name__)
+
+
+@task
+def check_environment() -> dict[str, str | bool | Path]:
+    """Check environment configuration."""
+    results = {}
+    try:
+        java_version = subprocess.check_output(
+            ["java", "-version"],
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        results["java_version"] = java_version
+    except Exception as e:
+        results["java_version_error"] = str(e)
+
+    results["java_home"] = os.environ.get("JAVA_HOME", "Not set")
+
+    driver_path = "./drivers/liquibase-neo4j-4.31.1-full.jar"
+    results["driver_exists"] = Path(driver_path).exists()
+    results["driver_path_absolute"] = Path(driver_path).resolve()
+
+    results["working_directory"] = Path.cwd()
+
+    return results
 
 
 @task
@@ -64,6 +90,8 @@ def liquibase_update_flow(
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
+    env_check = check_environment()
+    logger.info("Environment check results: %s", env_check)
     defaults_file = set_defaults_file(mdb_uri, mdb_user, changelog_file)
     try:
         run_liquibase_update(defaults_file, dry_run=dry_run)
