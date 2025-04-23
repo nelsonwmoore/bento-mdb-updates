@@ -144,7 +144,7 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
         f"--defaults-file={defaults_file}",
         "updateSQL",
     ]
-    print(f"Running liquibase cli: {cmd}")
+    print("Invoking Liquibase CLI →", " ".join(cmd))
     try:
         result = subprocess.run(cmd, capture_output=True, check=True)
     except CalledProcessError as e:
