@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import stat
 import subprocess
@@ -99,6 +100,7 @@ def set_defaults_file(
         f.write(f"url: {uri}\n")
         f.write(f"username: {user}\n")
         f.write(f"password: {password}\n")
+        f.write("classpath: /app/drivers/*.jar\n")
         f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver\n")
         f.write("logLevel: DEBUG")
         temp_file_path = Path(f.name)
@@ -128,12 +130,16 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     liquibase = Pyliquibase(
         defaultsFile=str(defaults_file),
         jdbcDriversDir=DRIVER_PATH,
-        additionalClasspath=DRIVER_JAR,
+        version="4.31.1",
     )
-    print("Checking status...")
-    liquibase.status()
+    logging.getLogger("pyliquibase").setLevel(logging.DEBUG)
+    import jnius_config
+
+    liquibase.log.debug("Resolved classpath : %s", jnius_config.get_classpath())
     print("Validating...")
     liquibase.validate()
+    print("Checking status...")
+    liquibase.status()
 
     if dry_run:
         print("Running updateSQL (dry run)...")
