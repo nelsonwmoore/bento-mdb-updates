@@ -9,7 +9,9 @@ import tempfile
 from pathlib import Path
 
 import click
+import jnius_config
 from dotenv import load_dotenv
+from graphviz import CalledProcessError
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from pyliquibase import Pyliquibase
@@ -106,12 +108,6 @@ def set_defaults_file(
     temp_file_path.chmod(
         stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP,
     )  # User/group read/write only
-    print(f"Created defaults file at {temp_file_path} with content:")
-    print(f"changelogFile: {changelog_file}")
-    print(f"url: {uri}")
-    print(f"username: {user}")
-    print("password: ********")
-    print("logLevel: debug")
     return temp_file_path
 
 
@@ -131,10 +127,9 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
         jdbcDriversDir=DRIVER_PATH,
         version="4.31.1",
     )
-    import jnius_config
 
-    print("Resolved classpath : %s", jnius_config.get_classpath())
-    print("Liquibase args: %s", liquibase.args)
+    print(f"Resolved classpath : {jnius_config.get_classpath()}")
+    print(f"Liquibase args: {liquibase.args}")
 
     # try liquibase cli
     lb_dir = Path(liquibase.liquibase_dir)
@@ -150,7 +145,18 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
         "updateSQL",
     ]
     print(f"Running liquibase cli: {cmd}")
-    subprocess.run(cmd, check=True)
+    try:
+        result = subprocess.run(cmd, capture_output=True, check=True)
+    except CalledProcessError as e:
+        result = e
+    print("── Liquibase STDOUT ──")
+    print(result.stdout or "<no stdout>")
+    print("── Liquibase STDERR ──")
+    print(result.stderr or "<no stderr>")
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Liquibase `{action}` failed with exit code {result.returncode}",
+        )
 
     if dry_run:
         print("Running updateSQL (dry run)...")
