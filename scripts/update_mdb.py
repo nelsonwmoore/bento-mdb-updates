@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import stat
 import subprocess
@@ -11,26 +10,11 @@ from pathlib import Path
 
 import click
 from dotenv import load_dotenv
-from prefect import flow, task
+from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
-from prefect.logging import get_run_logger
 from pyliquibase import Pyliquibase
 
 load_dotenv(override=True, dotenv_path="config/.env")
-logger = logging.getLogger(__name__)
-
-
-@task(log_prints=True)
-def test_logs() -> None:
-    """Test logs."""
-    prefect_logger = get_run_logger()
-    for lgr in [logger, prefect_logger]:
-        lgr.info("INFO")
-        lgr.debug("DEBUG")
-        lgr.warning("WARNING")
-        lgr.error("ERROR")
-        lgr.critical("CRITICAL")
-    print("Print")
 
 
 @task(log_prints=True)
@@ -54,9 +38,6 @@ def check_environment() -> dict[str, str | bool | Path]:
     results["driver_path_absolute"] = Path(driver_path).resolve()
 
     results["working_directory"] = Path.cwd()
-    prefect_logger = get_run_logger()
-    for lgr in [logger, prefect_logger]:
-        lgr.info(results)
     return results
 
 
@@ -75,7 +56,7 @@ def set_defaults_file(
         f.write(f"url: {uri}\n")
         f.write(f"username: {user}\n")
         f.write(f"password: {password}\n")
-        f.write("classpath: ./app/drivers/liquibase-neo4j-4.31.1-full.jar\n")
+        f.write("classpath: /app/drivers/liquibase-neo4j-4.31.1-full.jar\n")
         f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver\n")
         f.write("logLevel: info\n")
         temp_file_path = Path(f.name)
@@ -86,6 +67,7 @@ def set_defaults_file(
 @task(log_prints=True)
 def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) -> None:
     """Run Liquibase Update on Changelog."""
+    logger = get_run_logger()
     try:
         liquibase = Pyliquibase(str(defaults_file))
         if dry_run:
@@ -106,7 +88,7 @@ def liquibase_update_flow(
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
-    test_logs()
+    logger = get_run_logger()
     env_check = check_environment()
     logger.info("Environment check results: %s", env_check)
     defaults_file = set_defaults_file(mdb_uri, mdb_user, changelog_file)
