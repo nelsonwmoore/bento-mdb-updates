@@ -99,15 +99,18 @@ def set_defaults_file(
         f.write(f"url: {uri}\n")
         f.write(f"username: {user}\n")
         f.write(f"password: {password}\n")
-        f.write("logLevel: debug\n")
+        f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver\n")
+        f.write("logLevel: DEBUG")
         temp_file_path = Path(f.name)
-    temp_file_path.chmod(stat.S_IRUSR | stat.S_IWUSR)  # User read/write only
+    temp_file_path.chmod(
+        stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP,
+    )  # User/group read/write only
     print(f"Created defaults file at {temp_file_path} with content:")
     print(f"changelogFile: {changelog_file}")
     print(f"url: {uri}")
     print(f"username: {user}")
     print("password: ********")
-    print("logLevel: info")
+    print("logLevel: DEBUG")
     return temp_file_path
 
 
@@ -127,6 +130,11 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
         jdbcDriversDir=DRIVER_PATH,
         additionalClasspath=DRIVER_JAR,
     )
+    print("Checking status...")
+    liquibase.status()
+    print("Validating...")
+    liquibase.validate()
+
     if dry_run:
         print("Running updateSQL (dry run)...")
         liquibase.updateSQL()
@@ -149,6 +157,8 @@ def liquibase_update_flow(
     logger.info("Environment check results: %s", env_check)
     verify_environment()
     defaults_file = set_defaults_file(mdb_uri, mdb_user, changelog_file)
+    print(f"Changelog file: {Path(changelog_file).resolve()}")
+
     try:
         run_liquibase_update(defaults_file, dry_run=dry_run)
     finally:
