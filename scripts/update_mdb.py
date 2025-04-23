@@ -13,20 +13,23 @@ import click
 from dotenv import load_dotenv
 from prefect import flow, task
 from prefect.blocks.system import Secret
+from prefect.logging import get_run_logger
 from pyliquibase import Pyliquibase
 
 load_dotenv(override=True, dotenv_path="config/.env")
 logger = logging.getLogger(__name__)
+prefect_logger = get_run_logger()
 
 
 @task(log_prints=True)
 def test_logs() -> None:
     """Test logs."""
-    logger.info("INFO")
-    logger.debug("DEBUG")
-    logger.warning("WARNING")
-    logger.error("ERROR")
-    logger.critical("CRITICAL")
+    for lgr in [logger, prefect_logger]:
+        lgr.info("INFO")
+        lgr.debug("DEBUG")
+        lgr.warning("WARNING")
+        lgr.error("ERROR")
+        lgr.critical("CRITICAL")
     print("Print")
 
 
@@ -51,7 +54,8 @@ def check_environment() -> dict[str, str | bool | Path]:
     results["driver_path_absolute"] = Path(driver_path).resolve()
 
     results["working_directory"] = Path.cwd()
-    logger.info(results)
+    for lgr in [logger, prefect_logger]:
+        lgr.info(results)
     return results
 
 
@@ -101,6 +105,7 @@ def liquibase_update_flow(
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
+    test_logs()
     env_check = check_environment()
     logger.info("Environment check results: %s", env_check)
     defaults_file = set_defaults_file(mdb_uri, mdb_user, changelog_file)
