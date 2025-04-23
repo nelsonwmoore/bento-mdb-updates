@@ -101,7 +101,7 @@ def set_defaults_file(
         f.write(f"url: {uri}\n")
         f.write(f"username: {user}\n")
         f.write(f"password: {password}\n")
-        f.write("classpath: /app/drivers/*.jar\n")
+        f.write("classpath: /app/drivers\n")
         f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver\n")
         f.write("logLevel: debug")
         temp_file_path = Path(f.name)
@@ -139,10 +139,11 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     if not (mode & stat.S_IXUSR):
         lb_bin.chmod(mode | stat.S_IXUSR)
         print(f"Added execute bit to {lb_bin}")
+    action = "updateSQL" if dry_run else "update"
     cmd = [
         str(lb_bin),
         f"--defaults-file={defaults_file}",
-        "updateSQL",
+        action,
     ]
     print("Invoking Liquibase CLI →", " ".join(cmd))
     try:
