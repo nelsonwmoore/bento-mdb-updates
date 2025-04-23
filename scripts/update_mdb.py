@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import stat
 import subprocess
@@ -102,7 +101,7 @@ def set_defaults_file(
         f.write(f"password: {password}\n")
         f.write("classpath: /app/drivers/*.jar\n")
         f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver\n")
-        f.write("logLevel: DEBUG")
+        f.write("logLevel: debug")
         temp_file_path = Path(f.name)
     temp_file_path.chmod(
         stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP,
@@ -112,7 +111,7 @@ def set_defaults_file(
     print(f"url: {uri}")
     print(f"username: {user}")
     print("password: ********")
-    print("logLevel: DEBUG")
+    print("logLevel: debug")
     return temp_file_path
 
 
@@ -132,14 +131,26 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
         jdbcDriversDir=DRIVER_PATH,
         version="4.31.1",
     )
-    logging.getLogger("pyliquibase").setLevel(logging.DEBUG)
     import jnius_config
 
-    liquibase.log.debug("Resolved classpath : %s", jnius_config.get_classpath())
-    print("Validating...")
-    liquibase.validate()
-    print("Checking status...")
-    liquibase.status()
+    print("Resolved classpath : %s", jnius_config.get_classpath())
+    print("Liquibase args: %s", liquibase.args)
+
+    # try liquibase cli
+    lb_dir = Path(liquibase.liquibase_dir)
+    print(f"Liquibase directory: {lb_dir}")
+    lb_bin = lb_dir / "liquibase"
+    mode = lb_bin.stat().st_mode
+    if not (mode & stat.S_IXUSR):
+        lb_bin.chmod(mode | stat.S_IXUSR)
+        print(f"Added execute bit to {lb_bin}")
+    cmd = [
+        str(lb_bin),
+        f"--defaults-file={defaults_file}",
+        "updateSQL",
+    ]
+    print(f"Running liquibase cli: {cmd}")
+    subprocess.run(cmd, check=True)
 
     if dry_run:
         print("Running updateSQL (dry run)...")
@@ -163,6 +174,13 @@ def liquibase_update_flow(
     logger.info("Environment check results: %s", env_check)
     verify_environment()
     defaults_file = set_defaults_file(mdb_uri, mdb_user, changelog_file)
+    # print out the contents of the defaults file
+    raw = Path(defaults_file).read_text().splitlines()
+    for line in raw:
+        if line.lower().startswith("password"):
+            print("password: ********")
+        else:
+            print(line)
     print(f"Changelog file: {Path(changelog_file).resolve()}")
 
     try:
