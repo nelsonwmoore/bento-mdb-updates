@@ -7,11 +7,11 @@ import stat
 import subprocess
 import tempfile
 from pathlib import Path
+from subprocess import CalledProcessError
 
 import click
 import jnius_config
 from dotenv import load_dotenv
-from graphviz import CalledProcessError
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from pyliquibase import Pyliquibase
@@ -146,7 +146,7 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     ]
     print("Invoking Liquibase CLI →", " ".join(cmd))
     try:
-        result = subprocess.run(cmd, capture_output=True, check=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     except CalledProcessError as e:
         result = e
     print("── Liquibase STDOUT ──")
