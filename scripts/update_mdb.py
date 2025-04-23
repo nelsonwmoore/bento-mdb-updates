@@ -19,7 +19,18 @@ load_dotenv(override=True, dotenv_path="config/.env")
 logger = logging.getLogger(__name__)
 
 
-@task
+@task(log_prints=True)
+def test_logs() -> None:
+    """Test logs."""
+    logger.info("INFO")
+    logger.debug("DEBUG")
+    logger.warning("WARNING")
+    logger.error("ERROR")
+    logger.critical("CRITICAL")
+    print("Print")
+
+
+@task(log_prints=True)
 def check_environment() -> dict[str, str | bool | Path]:
     """Check environment configuration."""
     results = {}
@@ -40,11 +51,11 @@ def check_environment() -> dict[str, str | bool | Path]:
     results["driver_path_absolute"] = Path(driver_path).resolve()
 
     results["working_directory"] = Path.cwd()
-
+    logger.info(results)
     return results
 
 
-@task
+@task(log_prints=True)
 def set_defaults_file(
     mdb_uri: str,
     mdb_user: str,
@@ -67,7 +78,7 @@ def set_defaults_file(
     return temp_file_path
 
 
-@task
+@task(log_prints=True)
 def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) -> None:
     """Run Liquibase Update on Changelog."""
     try:
@@ -81,7 +92,7 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
         raise
 
 
-@flow(name="liquibase-update")
+@flow(name="liquibase-update", log_prints=True)
 def liquibase_update_flow(
     mdb_uri: str,
     mdb_user: str,
