@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -130,6 +131,12 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
 
     print(f"Resolved classpath : {jnius_config.get_classpath()}")
     print(f"Liquibase args: {liquibase.args}")
+
+    # copy Neo4j extension JAR to Liquibase's lib folder
+    ext_jar = Path(DRIVER_PATH) / "liquibase-neo4j-4.31.1-full.jar"
+    dest_lib = Path(liquibase.liquibase_lib_dir)
+    shutil.copy(ext_jar, dest_lib)
+    print(f"Copied Neo4j extension JAR from {ext_jar} to {dest_lib}")
 
     # try liquibase cli
     lb_dir = Path(liquibase.liquibase_dir)
