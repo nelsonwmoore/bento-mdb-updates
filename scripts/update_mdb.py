@@ -18,12 +18,12 @@ from pyliquibase import Pyliquibase
 
 load_dotenv(override=True, dotenv_path="config/.env")
 logger = logging.getLogger(__name__)
-prefect_logger = get_run_logger()
 
 
 @task(log_prints=True)
 def test_logs() -> None:
     """Test logs."""
+    prefect_logger = get_run_logger()
     for lgr in [logger, prefect_logger]:
         lgr.info("INFO")
         lgr.debug("DEBUG")
@@ -54,6 +54,7 @@ def check_environment() -> dict[str, str | bool | Path]:
     results["driver_path_absolute"] = Path(driver_path).resolve()
 
     results["working_directory"] = Path.cwd()
+    prefect_logger = get_run_logger()
     for lgr in [logger, prefect_logger]:
         lgr.info(results)
     return results
