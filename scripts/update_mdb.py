@@ -2,89 +2,33 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 import stat
-import subprocess
 import tempfile
 from pathlib import Path
-from subprocess import CalledProcessError
 
 import click
-import jnius_config
-from dotenv import load_dotenv
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from pyliquibase import Pyliquibase
 
-load_dotenv(override=True, dotenv_path="config/.env")
 DRIVER_PATH = "/app/drivers"
-DRIVER_JAR = f"{DRIVER_PATH}/liquibase-neo4j-4.31.1-full.jar"
-
-
-@task(log_prints=True)
-def check_environment() -> dict[str, str | bool | Path]:
-    """Check environment configuration."""
-    results = {}
-    try:
-        java_version = subprocess.check_output(
-            ["java", "-version"],
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        results["java_version"] = java_version
-    except Exception as e:
-        results["java_version_error"] = str(e)
-
-    results["java_home"] = os.environ.get("JAVA_HOME", "Not set")
-
-    results["driver_exists"] = Path(DRIVER_PATH).exists()
-    results["driver_path_absolute"] = Path(DRIVER_PATH).resolve()
-
-    results["working_directory"] = Path.cwd()
-    return results
-
-
-@task(log_prints=True)
-def verify_environment() -> None:
-    """Verify environment configuration."""
-    try:
-        result = subprocess.run(
-            ["java", "-version"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        print(f"Java version stderr: {result.stderr}")
-    except subprocess.CalledProcessError as e:
-        print(f"Java check failed: {e}")
-
-    # Check file system for driver JARs
-    paths_to_check = [
-        "/app/drivers",
-        "/app",
-        "./drivers",
-        "../drivers",
-        "/app/bento-mdb-updates-main/drivers",
-    ]
-
-    for path in paths_to_check:
-        print(f"Checking path: {path}")
-        if Path(path).exists():
-            try:
-                files = list(Path(path).glob("*.jar"))
-                print(f"  JAR files in {path}: {files}")
-
-                # Check file permissions if files exist
-                for jar_file in files:
-                    file_stat = jar_file.stat()
-                    print(
-                        f"  {jar_file}: {stat.filemode(file_stat.st_mode)}, size: {file_stat.st_size}",
-                    )
-            except Exception as e:
-                print(f"  Error listing {path}: {e}")
-        else:
-            print(f"  Path does not exist: {path}")
+DRIVER_JAR = "liquibase-neo4j-4.31.1-full.jar"
+LIQUIBASE_VERSION = "4.31.1"
+DRIVER_NAME = "liquibase.ext.neo4j.database.jdbc.Neo4jDriver"
+VALID_MDB_IDS = [
+    "fnl-mdb-dev",
+    "og-mdb-dev",
+    "og-mdb-nightly",
+    "og-mdb-prod",
+]
+VALID_LOG_LEVELS = [
+    "debug",
+    "info",
+    "warning",
+    "severe",
+    "off",
+]
 
 
 @task(log_prints=True)
@@ -92,19 +36,33 @@ def set_defaults_file(
     mdb_uri: str,
     mdb_user: str,
     changelog_file: str,
+    mdb_id: str,
+    log_level: str,
 ) -> Path:
     """Create temporary defaults file and return path."""
-    uri = mdb_uri or os.environ.get("NEO4J_MDB_URI")
-    user = mdb_user or os.environ.get("NEO4J_MDB_USER")
-    password = Secret.load("fnl-mdb-dev-pwd").get()
+    logger = get_run_logger()
+    if mdb_id not in VALID_MDB_IDS:
+        msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
+        raise ValueError(msg)
+    if log_level not in VALID_LOG_LEVELS:
+        msg = (
+            f"Invalid log level: {log_level}. Valid levels: {VALID_LOG_LEVELS}.",
+            "Defaulting to 'info'.",
+        )
+        logger.warning(msg)
+        log_level = "info"
+    pwd_secret_name = mdb_id + "-pwd"
+    uri = mdb_uri
+    user = mdb_user
+    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(f"changelogFile: {changelog_file}\n")
         f.write(f"url: {uri}\n")
         f.write(f"username: {user}\n")
         f.write(f"password: {password}\n")
-        f.write("classpath: /app/drivers\n")
-        f.write("driver: liquibase.ext.neo4j.database.jdbc.Neo4jDriver\n")
-        f.write("logLevel: debug")
+        f.write(f"classpath: {DRIVER_PATH}\n")
+        f.write(f"driver: {DRIVER_NAME}\n")
+        f.write(f"logLevel: {log_level}")
         temp_file_path = Path(f.name)
     temp_file_path.chmod(
         stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP,
@@ -115,92 +73,59 @@ def set_defaults_file(
 @task(log_prints=True)
 def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) -> None:
     """Run Liquibase Update on Changelog."""
-    print(f"Running liquibase {'updateSQL' if dry_run else 'update'}")
-    print(f"Defaults file: {defaults_file}")
-    print(f"Driver directory: {DRIVER_PATH}")
-    print(f"Driver JAR exists: {Path(DRIVER_JAR).exists()}")
-    print(
-        f"Driver directory contents: {list(Path(DRIVER_PATH).glob('*')) if Path(DRIVER_PATH).exists() else 'Directory not found'}",
-    )
-
-    liquibase = Pyliquibase(
+    logger = get_run_logger()
+    plb = Pyliquibase(
         defaultsFile=str(defaults_file),
         jdbcDriversDir=DRIVER_PATH,
-        version="4.31.1",
+        version=LIQUIBASE_VERSION,
     )
 
-    print(f"Resolved classpath : {jnius_config.get_classpath()}")
-    print(f"Liquibase args: {liquibase.args}")
-
     # copy Neo4j extension JAR to Liquibase's lib folder
-    ext_jar = Path(DRIVER_PATH) / "liquibase-neo4j-4.31.1-full.jar"
-    dest_lib = Path(liquibase.liquibase_lib_dir)
+    ext_jar = Path(DRIVER_PATH) / DRIVER_JAR
+    dest_lib = Path(plb.liquibase_lib_dir)
     shutil.copy(ext_jar, dest_lib)
-    print(f"Copied Neo4j extension JAR from {ext_jar} to {dest_lib}")
-
-    # try liquibase cli
-    lb_dir = Path(liquibase.liquibase_dir)
-    print(f"Liquibase directory: {lb_dir}")
-    lb_bin = lb_dir / "liquibase"
-    mode = lb_bin.stat().st_mode
-    if not (mode & stat.S_IXUSR):
-        lb_bin.chmod(mode | stat.S_IXUSR)
-        print(f"Added execute bit to {lb_bin}")
-    action = "updateSQL" if dry_run else "update"
-    cmd = [
-        str(lb_bin),
-        f"--defaults-file={defaults_file}",
-        action,
-    ]
-    print("Invoking Liquibase CLI →", " ".join(cmd))
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    except CalledProcessError as e:
-        result = e
-    print("── Liquibase STDOUT ──")
-    print(result.stdout or "<no stdout>")
-    print("── Liquibase STDERR ──")
-    print(result.stderr or "<no stderr>")
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"Liquibase `{action}` failed with exit code {result.returncode}",
-        )
+    logger.info("Copied Neo4j extension JAR from %s to %s", ext_jar, dest_lib)
 
     if dry_run:
-        print("Running updateSQL (dry run)...")
-        liquibase.updateSQL()
+        logger.info("Running updateSQL (dry run)...")
+        plb.updateSQL()
     else:
-        print("Running update...")
-        liquibase.update()
+        logger.info("Running update...")
+        plb.update()
 
 
 @flow(name="liquibase-update", log_prints=True)
-def liquibase_update_flow(
+def liquibase_update_flow(  # noqa: PLR0913
     mdb_uri: str,
     mdb_user: str,
     changelog_file: str,
+    mdb_id: str,
+    log_level: str = "info",
     *,
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
-    env_check = check_environment()
-    logger.info("Environment check results: %s", env_check)
-    verify_environment()
-    defaults_file = set_defaults_file(mdb_uri, mdb_user, changelog_file)
+    defaults_file = set_defaults_file(
+        mdb_uri,
+        mdb_user,
+        changelog_file,
+        mdb_id,
+        log_level,
+    )
     # print out the contents of the defaults file
-    raw = Path(defaults_file).read_text().splitlines()
+    raw = Path(defaults_file).read_text().splitlines()  # type:ignore reportArgumentType
     for line in raw:
         if line.lower().startswith("password"):
-            print("password: ********")
+            logger.info("password: ********")
         else:
-            print(line)
-    print(f"Changelog file: {Path(changelog_file).resolve()}")
+            logger.info(line)
+    logger.info("Changelog file: %s", Path(changelog_file).resolve())
 
     try:
         run_liquibase_update(defaults_file, dry_run=dry_run)
     finally:
-        defaults_file.unlink(missing_ok=True)
+        defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
 
 
 @click.option(
@@ -224,16 +149,20 @@ def liquibase_update_flow(
     prompt=True,
     help="Changelog file to update",
 )
+@click.option("--mdb_id", type=str, help="MDB ID", prompt=True, required=True)
+@click.option("--log_level", type=str, help="Log level", prompt=True, required=True)
 @click.option(
     "--dry_run",
     is_flag=True,
     default=False,
     help="Dry run flag",
 )
-def main(
+def main(  # noqa: PLR0913
     mdb_uri: str,
     mdb_user: str,
     changelog_file: str,
+    mdb_id: str,
+    log_level: str,
     *,
     dry_run: bool = False,
 ) -> None:
@@ -242,9 +171,11 @@ def main(
         mdb_uri=mdb_uri,
         mdb_user=mdb_user,
         changelog_file=changelog_file,
+        mdb_id=mdb_id,
+        log_level=log_level,
         dry_run=dry_run,
     )
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore reportCallIssue
