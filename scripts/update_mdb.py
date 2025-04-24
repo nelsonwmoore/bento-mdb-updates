@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import stat
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -55,6 +56,8 @@ def set_defaults_file(
     uri = mdb_uri
     user = mdb_user
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
+    if mdb_id.startswith("og-mdb"):
+        password = ""
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(f"changelogFile: {changelog_file}\n")
         f.write(f"url: {uri}\n")
@@ -85,6 +88,34 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     dest_lib = Path(plb.liquibase_lib_dir)
     shutil.copy(ext_jar, dest_lib)
     logger.info("Copied Neo4j extension JAR from %s to %s", ext_jar, dest_lib)
+
+    # try liquibase cli
+    lb_dir = Path(plb.liquibase_dir)
+    logger.info("Liquibase directory: %s", lb_dir)
+    lb_bin = lb_dir / "liquibase"
+    mode = lb_bin.stat().st_mode
+    if not (mode & stat.S_IXUSR):
+        lb_bin.chmod(mode | stat.S_IXUSR)
+        logger.info("Added execute bit to %s", lb_bin)
+    action = "updateSQL" if dry_run else "update"
+    cmd = [
+        str(lb_bin),
+        f"--defaults-file={defaults_file}",
+        action,
+    ]
+    msg = f"Invoking Liquibase CLI →{' '.join(cmd)}"
+    logger.info(msg)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        result = e
+    logger.info("── Liquibase STDOUT ──")
+    logger.info(result.stdout or "<no stdout>")
+    logger.info("── Liquibase STDERR ──")
+    logger.info(result.stderr or "<no stderr>")
+    if result.returncode != 0:
+        msg = f"Liquibase `{action}` failed with exit code {result.returncode}"
+        raise RuntimeError(msg)
 
     if dry_run:
         logger.info("Running updateSQL (dry run)...")
