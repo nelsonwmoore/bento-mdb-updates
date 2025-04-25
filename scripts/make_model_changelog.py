@@ -86,7 +86,7 @@ logger = logging.getLogger(__name__)
     type=bool,
     help="MDF is only terms with empty nodes/rels/propdefs",
 )
-def main(
+def main(  # noqa: PLR0913
     model_handle: str,
     mdf_files: str | list[str],
     output_file_path: str | Path,

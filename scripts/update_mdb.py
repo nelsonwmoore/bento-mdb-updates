@@ -19,6 +19,7 @@ LIQUIBASE_VERSION = "4.31.1"
 DRIVER_NAME = "liquibase.ext.neo4j.database.jdbc.Neo4jDriver"
 VALID_MDB_IDS = [
     "fnl-mdb-dev",
+    "cloud-one-mdb-dev",
     "og-mdb-dev",
     "og-mdb-nightly",
     "og-mdb-prod",

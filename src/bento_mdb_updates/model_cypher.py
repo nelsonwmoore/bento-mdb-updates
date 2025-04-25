@@ -14,6 +14,7 @@ from bento_mdb_updates.cypher_utils import (
     Statement,
     create_entity_cypher_stmt,
     create_relationship_cypher_stmt,
+    deprecate_old_model_nodes_cypher_stmt,
 )
 
 if TYPE_CHECKING:
@@ -238,13 +239,18 @@ class ModelToChangelogConverter:
         """Create model node and set model version for other entities."""
         model_ent = ModelEnt(
             {
-                "latest_version": latest_version,
+                "is_latest_version": latest_version,
                 "repository": self.model.uri,
                 "handle": self.model.handle,
                 "version": self.model.version,
                 "name": self.model.handle,
             },
         )
+        if latest_version:
+            stmt, rollback = deprecate_old_model_nodes_cypher_stmt(
+                str(model_ent.handle),
+            )
+            self.add_statement("add_ents", stmt, rollback)
         self.generate_cypher_to_add_entity(model_ent)
         if model_ent.version is not None:
             add_version_to_model_ents(self.model)

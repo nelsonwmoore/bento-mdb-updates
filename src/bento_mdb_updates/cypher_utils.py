@@ -367,3 +367,17 @@ def generate_cypher_to_link_term_synonyms(
         Create(T(cypher_ent_2.plain_var(), R("represents"), new_concept.plain_var())),
         ")",
     )
+
+
+def deprecate_old_model_nodes_cypher_stmt(
+    model_handle: str,
+) -> tuple[Statement, Statement]:
+    """Generate cypher statement to deprecate old model node versions."""
+    return (
+        Statement(
+            f"MATCH (n0:model {{handle: '{model_handle}'}})",
+            "WHERE n0.is_latest_version = true",
+            "SET n0.is_latest_version = false",
+        ),
+        Statement(),
+    )
