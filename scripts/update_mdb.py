@@ -115,6 +115,14 @@ def liquibase_update_flow(  # noqa: PLR0913
     dry_run: bool = False,
 ) -> None:
     """Run Liquibase Update on Changelog."""
+    # configure jvm
+    from jnius import autoclass
+
+    jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
+    System = autoclass("java.lang.System")
+    ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")
+    PrintStream = autoclass("java.io.PrintStream")
+
     logger = get_run_logger()
     defaults_file = set_defaults_file(
         mdb_uri,
@@ -211,11 +219,4 @@ def main(  # noqa: PLR0913
 
 
 if __name__ == "__main__":
-    # configure jvm
-    from jnius import autoclass
-
-    jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
-    System = autoclass("java.lang.System")
-    ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")
-    PrintStream = autoclass("java.io.PrintStream")
     main()  # type: ignore reportCallIssue
