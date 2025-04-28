@@ -10,6 +10,7 @@ from pathlib import Path
 
 import click
 import jnius_config
+from jnius import autoclass
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
@@ -26,21 +27,20 @@ VALID_MDB_IDS = [
     "og-mdb-nightly",
     "og-mdb-prod",
 ]
-VALID_LOG_LEVELS = [
-    "debug",
-    "info",
-    "warning",
-    "severe",
-    "off",
-]
-
-
-@task
-def configure_jvm() -> None:
-    """Configure Java enironment for Liquibase."""
-    logger = get_run_logger()
-    jnius_config.add_options("-Xms1g", "-Xmx3g")
-    logger.info("Configured Java options: %s", jnius_config.get_options())
+VALID_LOG_LEVELS = {
+    "debug": logging.DEBUG,
+    "info": logging.INFO,
+    "warning": logging.WARNING,
+    "severe": logging.CRITICAL,
+    "off": logging.NOTSET,
+}
+# configure jvm
+JVM_HEAP_MIN = "1g"
+JVM_HEAP_MAX = "3g"
+jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
+System = autoclass("java.lang.System")
+ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")
+PrintStream = autoclass("java.io.PrintStream")
 
 
 @task
@@ -57,11 +57,11 @@ def set_defaults_file(
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
     if log_level not in VALID_LOG_LEVELS:
-        msg = (
-            f"Invalid log level: {log_level}. Valid levels: {VALID_LOG_LEVELS}.",
-            "Defaulting to 'info'.",
+        logger.warning(
+            "Invalid log level %r (valid: %s); defaulting to 'info'.",
+            log_level,
+            list(VALID_LOG_LEVELS.keys()),
         )
-        logger.warning(msg)
         log_level = "info"
     pwd_secret_name = mdb_id + "-pwd"
     uri = mdb_uri
@@ -88,9 +88,7 @@ def set_defaults_file(
 def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
-    # let pyliquibase logger use prefect api log handler
-    plb_logger = logging.getLogger("pyliquibase")
-    plb_logger.addHandler(APILogHandler())
+
     plb = Pyliquibase(
         defaultsFile=str(defaults_file),
         jdbcDriversDir=DRIVER_PATH,
@@ -139,12 +137,35 @@ def liquibase_update_flow(  # noqa: PLR0913
             logger.info(line)
     logger.info("Changelog file: %s", Path(changelog_file).resolve())
 
+    # set up pyliquibase logger use prefect api log handler
+    plb_logger = logging.getLogger("pyliquibase")
+    plb_logger.setLevel(VALID_LOG_LEVELS[log_level])
+    if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
+        plb_logger.addHandler(APILogHandler())
+
+    # set up pyliquibase logger to get java steam output
+    orig_out, orig_err = System.out, System.err
+    baos_out, baos_err = ByteArrayOutputStream(), ByteArrayOutputStream()
+    System.setOut(PrintStream(baos_out))
+    System.setErr(PrintStream(baos_err))
+
     try:
         run_liquibase_update(defaults_file, dry_run=dry_run)
     finally:
         defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
+        System.setOut(orig_out)
+        System.setErr(orig_err)
+
+    # emit java logs to Python logger
+    for line in baos_out.toString().splitlines():
+        plb_logger.info(line)
+    for line in baos_err.toString().splitlines():
+        plb_logger.error(line)
+
+    logger.info("Liquibase finished.")
 
 
+@click.command()
 @click.option(
     "--mdb_uri",
     required=True,
