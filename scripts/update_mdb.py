@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import shutil
 import stat
 import tempfile
@@ -87,12 +86,6 @@ def set_defaults_file(
 def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
-    # configure pyliquibase logger to log to prefect api handler
-    plb_logger = logging.getLogger("pyliquibase")
-    for handler in logger.handlers:  # type: ignore reportAttributeAccessIssue
-        if handler.__class__.__name__ != "APILogHandler":
-            continue
-        plb_logger.addHandler(handler)
     plb = Pyliquibase(
         defaultsFile=str(defaults_file),
         jdbcDriversDir=DRIVER_PATH,
