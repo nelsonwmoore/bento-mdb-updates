@@ -124,6 +124,19 @@ def liquibase_update_flow(  # noqa: PLR0913
     ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")  # noqa: N806
     PrintStream = autoclass("java.io.PrintStream")  # noqa: N806
 
+    # set up pyliquibase logger use prefect api log handler
+    plb_logger = logging.getLogger("pyliquibase")
+    plb_logger.setLevel(VALID_LOG_LEVELS[log_level])
+    if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
+        plb_logger.addHandler(APILogHandler())
+
+    # set up pyliquibase logger to get java steam output
+    orig_out, orig_err = System.out, System.err
+    baos_out, baos_err = ByteArrayOutputStream(), ByteArrayOutputStream()
+    ps_out, ps_err = PrintStream(baos_out), PrintStream(baos_err)
+    System.setOut(ps_out)
+    System.setErr(ps_err)
+
     logger = get_run_logger()
     defaults_file = set_defaults_file(
         mdb_uri,
@@ -140,18 +153,6 @@ def liquibase_update_flow(  # noqa: PLR0913
         else:
             logger.info(line)
     logger.info("Changelog file: %s", Path(changelog_file).resolve())
-
-    # set up pyliquibase logger use prefect api log handler
-    plb_logger = logging.getLogger("pyliquibase")
-    plb_logger.setLevel(VALID_LOG_LEVELS[log_level])
-    if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
-        plb_logger.addHandler(APILogHandler())
-
-    # set up pyliquibase logger to get java steam output
-    orig_out, orig_err = System.out, System.err
-    baos_out, baos_err = ByteArrayOutputStream(), ByteArrayOutputStream()
-    System.setOut(PrintStream(baos_out))
-    System.setErr(PrintStream(baos_err))
 
     try:
         run_liquibase_update(defaults_file, dry_run=dry_run)
