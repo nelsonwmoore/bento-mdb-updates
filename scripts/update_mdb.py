@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 import stat
-import subprocess
 import tempfile
 from pathlib import Path
 
 import click
+import jnius_config
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from pyliquibase import Pyliquibase
@@ -33,7 +34,15 @@ VALID_LOG_LEVELS = [
 ]
 
 
-@task(log_prints=True)
+@task
+def configure_jvm() -> None:
+    """Configure Java enironment for Liquibase."""
+    logger = get_run_logger()
+    jnius_config.add_options("-Xms1g", "-Xmx3g")
+    logger.info("Configured Java options: %s", jnius_config.get_options())
+
+
+@task
 def set_defaults_file(
     mdb_uri: str,
     mdb_user: str,
@@ -74,10 +83,16 @@ def set_defaults_file(
     return temp_file_path
 
 
-@task(log_prints=True)
+@task
 def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
+    # configure pyliquibase logger to log to prefect api handler
+    plb_logger = logging.getLogger("pyliquibase")
+    for handler in logger.handlers:  # type: ignore reportAttributeAccessIssue
+        if handler.__class__.__name__ != "APILogHandler":
+            continue
+        plb_logger.addHandler(handler)
     plb = Pyliquibase(
         defaultsFile=str(defaults_file),
         jdbcDriversDir=DRIVER_PATH,
@@ -91,32 +106,32 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     logger.info("Copied Neo4j extension JAR from %s to %s", ext_jar, dest_lib)
 
     # try liquibase cli
-    lb_dir = Path(plb.liquibase_dir)
-    logger.info("Liquibase directory: %s", lb_dir)
-    lb_bin = lb_dir / "liquibase"
-    mode = lb_bin.stat().st_mode
-    if not (mode & stat.S_IXUSR):
-        lb_bin.chmod(mode | stat.S_IXUSR)
-        logger.info("Added execute bit to %s", lb_bin)
-    action = "updateSQL" if dry_run else "update"
-    cmd = [
-        str(lb_bin),
-        f"--defaults-file={defaults_file}",
-        action,
-    ]
-    msg = f"Invoking Liquibase CLI →{' '.join(cmd)}"
-    logger.info(msg)
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        result = e
-    logger.info("── Liquibase STDOUT ──")
-    logger.info(result.stdout or "<no stdout>")
-    logger.info("── Liquibase STDERR ──")
-    logger.info(result.stderr or "<no stderr>")
-    if result.returncode != 0:
-        msg = f"Liquibase `{action}` failed with exit code {result.returncode}"
-        raise RuntimeError(msg)
+    # lb_dir = Path(plb.liquibase_dir)
+    # logger.info("Liquibase directory: %s", lb_dir)
+    # lb_bin = lb_dir / "liquibase"
+    # mode = lb_bin.stat().st_mode
+    # if not (mode & stat.S_IXUSR):
+    #     lb_bin.chmod(mode | stat.S_IXUSR)
+    #     logger.info("Added execute bit to %s", lb_bin)
+    # action = "updateSQL" if dry_run else "update"
+    # cmd = [
+    #     str(lb_bin),
+    #     f"--defaults-file={defaults_file}",
+    #     action,
+    # ]
+    # msg = f"Invoking Liquibase CLI →{' '.join(cmd)}"
+    # logger.info(msg)
+    # try:
+    #     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    # except subprocess.CalledProcessError as e:
+    #     result = e
+    # logger.info("── Liquibase STDOUT ──")
+    # logger.info(result.stdout or "<no stdout>")
+    # logger.info("── Liquibase STDERR ──")
+    # logger.info(result.stderr or "<no stderr>")
+    # if result.returncode != 0:
+    #     msg = f"Liquibase `{action}` failed with exit code {result.returncode}"
+    #     raise RuntimeError(msg)
 
     if dry_run:
         logger.info("Running updateSQL (dry run)...")
