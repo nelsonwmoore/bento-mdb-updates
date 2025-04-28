@@ -9,7 +9,6 @@ import tempfile
 from pathlib import Path
 
 import click
-import jnius_config
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
@@ -116,12 +115,14 @@ def liquibase_update_flow(  # noqa: PLR0913
 ) -> None:
     """Run Liquibase Update on Changelog."""
     # configure jvm
-    from jnius import autoclass
+    import jnius_config
 
     jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
-    System = autoclass("java.lang.System")
-    ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")
-    PrintStream = autoclass("java.io.PrintStream")
+    from jnius import autoclass
+
+    System = autoclass("java.lang.System")  # noqa: N806
+    ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")  # noqa: N806
+    PrintStream = autoclass("java.io.PrintStream")  # noqa: N806
 
     logger = get_run_logger()
     defaults_file = set_defaults_file(
