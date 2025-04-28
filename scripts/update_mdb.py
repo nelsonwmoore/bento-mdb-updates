@@ -10,7 +10,6 @@ from pathlib import Path
 
 import click
 import jnius_config
-from jnius import autoclass
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
@@ -37,10 +36,6 @@ VALID_LOG_LEVELS = {
 # configure jvm
 JVM_HEAP_MIN = "1g"
 JVM_HEAP_MAX = "3g"
-jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
-System = autoclass("java.lang.System")
-ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")
-PrintStream = autoclass("java.io.PrintStream")
 
 
 @task
@@ -216,4 +211,11 @@ def main(  # noqa: PLR0913
 
 
 if __name__ == "__main__":
+    # configure jvm
+    from jnius import autoclass
+
+    jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
+    System = autoclass("java.lang.System")
+    ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")
+    PrintStream = autoclass("java.io.PrintStream")
     main()  # type: ignore reportCallIssue
