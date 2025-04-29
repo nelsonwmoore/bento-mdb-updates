@@ -4,7 +4,6 @@ C3DC:
   mdf_files:
   - c3dc-model.yml
   - c3dc-model-props.yml
-  - terms.yml
   in_data_hub: false
   versions:
   - version: 1.4.0
