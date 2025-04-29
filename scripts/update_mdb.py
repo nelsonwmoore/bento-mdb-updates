@@ -123,7 +123,6 @@ def liquibase_update_flow(  # noqa: PLR0913
 
     System = autoclass("java.lang.System")  # noqa: N806
     ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")  # noqa: N806
-    OutputStream = autoclass("java.io.OutputStream")  # noqa: N806
     PrintStream = autoclass("java.io.PrintStream")  # noqa: N806
 
     # set up pyliquibase logger use prefect api log handler
@@ -135,8 +134,8 @@ def liquibase_update_flow(  # noqa: PLR0913
     # set up pyliquibase logger to get java steam output
     orig_out, orig_err = System.out, System.err
     baos_out, baos_err = ByteArrayOutputStream(), ByteArrayOutputStream()
-    ps_out = PrintStream.cast_from(OutputStream, baos_out)
-    ps_err = PrintStream.cast_from(OutputStream, baos_err)
+    ps_out = PrintStream(baos_out)
+    ps_err = PrintStream(baos_err)
     System.setOut(ps_out)
     System.setErr(ps_err)
 
