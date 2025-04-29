@@ -372,21 +372,34 @@ class GitHubClient:
     """Client to interact with GitHub API."""
 
     BASE_URL = "https://api.github.com"
+    DH_MODEL_REPO = "CBIIT/crdc-datahub-models"
 
     def __init__(self, github_token: str | None = None) -> None:
         """Initialize client."""
         self.github_token = github_token if github_token else os.environ["GITHUB_TOKEN"]
+        self.headers = {
+            "Authorization": f"token {self.github_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        self.session = requests.Session()
+        self.session.headers.update(self.headers)
 
-    def get_repo_tags(self, repo: str) -> list[str]:
+    def get_repo_tags(self, repo: str) -> list[str] | None:
         """Query GitHub API for tags on a given repository."""
         url = f"{self.BASE_URL}/repos/{repo}/tags"
-        headers = {"Authorization": f"token {self.github_token}"}
-        response = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT)
+        response = self.session.get(url, timeout=DEFAULT_TIMEOUT)
         if response.status_code != RESPONSE_200:
-            msg = f"Failed to get tags for repo {repo}: {response.status_code}"
-            logger.error(msg)
-            return []
+            logger.error(
+                "Failed to get latest prerelease commit for %s: %s",
+                repo,
+                response.status_code,
+            )
+            response.raise_for_status()
         tags = response.json()
+        if not tags:
+            logger.warning("No tags found for repo %s", repo)
+            return []
         return [tag["name"] for tag in tags]
 
     def commit_and_push_changes(
@@ -404,3 +417,25 @@ class GitHubClient:
         except subprocess.CalledProcessError:
             logger.exception("Failed to add %s to git", file_to_commit.name)
             return
+
+    def get_prerelease_model_commit(self, model: str) -> str | None:
+        """Get latest commit SHA for prerelease data hub model from cache."""
+        url = f"{self.BASE_URL}/repos/{self.DH_MODEL_REPO}/commits"
+        params = {
+            "sha": "dev2",
+            "path": f"cache/{model}",
+            "per_page": 1,
+        }
+        response = self.session.get(url, params=params, timeout=DEFAULT_TIMEOUT)
+        if response.status_code != RESPONSE_200:
+            logger.error(
+                "Failed to get latest prerelease commit for %s: %s",
+                model,
+                response.status_code,
+            )
+            response.raise_for_status()
+        commits = response.json()
+        if not commits:
+            logger.warning("No commits found for path cache/%s on branch dev2", model)
+            return ""
+        return commits[0]["sha"]

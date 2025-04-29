@@ -15,6 +15,7 @@ C3DC:
   - version: 2.1.0
     tag: 2.1.0
   latest_version: 2.1.0
+  latest_prerelease_commit: null
 CCDI:
   repository: CBIIT/ccdi-model
   mdf_directory: model-desc
@@ -31,6 +32,7 @@ CCDI:
   - version: 2.1.0
     tag: 2.1.0
   latest_version: 2.1.0
+  latest_prerelease_commit: f4b599bcef8200d46646a6aa802eaae5b1793870
 CDS:
   repository: CBIIT/cds-model
   mdf_directory: model-desc
@@ -70,6 +72,7 @@ CDS:
   - version: 6.0.4
     tag: 6.0.4-CDS_Release
   latest_version: 6.0.4
+  latest_prerelease_commit: d26e45af864a52a034cc7ad33aad1da1f1a8abf6
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
   mdf_directory: .
@@ -80,6 +83,7 @@ CRDCSubmission:
   versions:
   - version: 0.2.0
   latest_version: 0.2.0
+  latest_prerelease_commit: null
 CTDC:
   repository: CBIIT/ctdc-model
   mdf_directory: model-desc
@@ -95,6 +99,7 @@ CTDC:
   - version: 1.2.0
     tag: 1.2.0
   latest_version: 1.2.0
+  latest_prerelease_commit: b459e28aece2177039eb05217da1f04ef609ba64
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
@@ -106,6 +111,7 @@ GDC:
   versions:
   - version: 3.0.3
   latest_version: 3.0.3
+  latest_prerelease_commit: null
 HTAN:
   repository: CBIIT/htan-model
   mdf_directory: model-desc
@@ -117,6 +123,7 @@ HTAN:
   versions:
   - version: 24.3.1
   latest_version: 24.3.1
+  latest_prerelease_commit: null
 ICDC:
   repository: CBIIT/icdc-model-tool
   mdf_directory: model-desc
@@ -133,6 +140,7 @@ ICDC:
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
   latest_version: 1.0.0
+  latest_prerelease_commit: a842fe6914343fd1df8aff8c3752a866ce783666
 PDC:
   repository: CBIIT/pdc-model
   mdf_directory: model-desc
@@ -144,6 +152,7 @@ PDC:
   versions:
   - version: 2.0.2
   latest_version: 2.0.2
+  latest_prerelease_commit: null
 mCODE:
   repository: nelsonwmoore/mcode-model
   mdf_directory: model-desc
@@ -155,3 +164,4 @@ mCODE:
   versions:
   - version: 3.0.0
   latest_version: 3.0.0
+  latest_prerelease_commit: null

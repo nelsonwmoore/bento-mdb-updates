@@ -2,21 +2,25 @@ name: Check New MDFs
 
 on:
   schedule:
-    - cron: "0 0 * * *" # runs daily at midnight UTC
+    - cron: "12 4 * * *" # runs daily 04:12 UTC (12:12 AM EDT)
   workflow_dispatch:
     inputs:
       models_yaml_path:
         description: "Path to YAML files with models & refs their MDFs."
         required: false
         default: "config/mdb_models.yml"
+        type: string
       no_commit:
         description: "Don't commit changes to GitHub."
         required: false
-        default: "false"
+        default: false
+        type: boolean
       new_only:
         description: "Only update if tag is newer than latest version."
         required: false
-        default: "true"
+        default: true
+        type: boolean
+
 
 jobs:
   check_new_mdfs:
@@ -50,11 +54,10 @@ jobs:
       - name: Run MDF Check Script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODEL_SPECS_YAML: "${{ github.event.inputs.models_yaml_path || 'config/mdb_models.yml' }}"
+          NO_COMMIT: "${{ github.event.inputs.no_commit }}"
+          NEW_ONLY: "${{ github.event.inputs.new_only }}"
         run: |
-          MODEL_SPECS_YAML="${{ github.event.inputs.models_yaml_path || 'config/mdb_models.yml' }}"
-          NO_COMMIT="${{ github.event.inputs.no_commit || 'false' }}"
-          NEW_ONLY="${{ github.event.inputs.new_only || 'true' }}"
-
           check_new_mdfs \
           --model_specs_yaml "$MODEL_SPECS_YAML" \
           --no_commit "$NO_COMMIT" \

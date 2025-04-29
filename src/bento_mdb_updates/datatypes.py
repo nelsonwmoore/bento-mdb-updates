@@ -17,6 +17,7 @@ class ModelSpec(TypedDict):
     in_data_hub: bool
     versions: list[dict[str, Any]]
     latest_version: str
+    latest_prerelease_commit: str | None
 
 
 class PermissibleValue(TypedDict):

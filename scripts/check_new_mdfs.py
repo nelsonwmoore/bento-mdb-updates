@@ -43,10 +43,10 @@ def update_model_versions(
     *,
     new_only: bool = True,
 ) -> bool:
-    """Update ModelSpec with missing version tags from GitHub."""
+    """Update ModelSpec with missing version tags and prerelease commits from GitHub."""
     updated = False
     for model, spec in model_specs.items():
-        logger.info("Checking %s...", model)
+        logger.info("Checking %s for new tags...", model)
         repo = spec.get("repository")
         if not repo:
             logger.warning("No repository specified for %s", model)
@@ -58,33 +58,35 @@ def update_model_versions(
             v for v in current_versions if not v.get("ignore", False)
         ]
         current_latest_version = Version(
-            max([v["version"] for v in nonignored_versions], default="0.0.0")
+            max([v["version"] for v in nonignored_versions], default="0.0.0"),
         )
-        # current_latest_version = Version(spec.get("latest_version", "0.0.0"))
+        if raw_tags:
+            for tag in raw_tags:
+                normalized_tag = normalize_tag_version(tag)
+                tag_version = Version(normalized_tag)
 
-        for tag in raw_tags:
-            normalized_tag = normalize_tag_version(tag)
-            tag_version = Version(normalized_tag)
+                if any(
+                    v.get("tag") == tag and v.get("ignore", False)
+                    for v in current_versions
+                ):
+                    logger.info("Ignoring tag %s as it's marked as ignored", tag)
+                    continue
 
-            if any(
-                v.get("tag") == tag and v.get("ignore", False) for v in current_versions
-            ):
-                logger.info("Ignoring tag %s as it's marked as ignored", tag)
-                continue
+                if new_only and tag_version <= current_latest_version:
+                    logger.info(
+                        "Skipping %s, version is not newer than latest version %s",
+                        tag_version,
+                        current_latest_version,
+                    )
+                    continue
 
-            if new_only and tag_version <= current_latest_version:
-                logger.info(
-                    "Skipping %s, version is not newer than latest version %s",
-                    tag_version,
-                    current_latest_version,
-                )
-                continue
-
-            if not any(v.get("version") == normalized_tag for v in current_versions):
-                logger.info("Adding %s to versions for %s", normalized_tag, model)
-                new_version_entry = {"version": normalized_tag, "tag": tag}
-                current_versions.append(new_version_entry)
-                updated = True
+                if not any(
+                    v.get("version") == normalized_tag for v in current_versions
+                ):
+                    logger.info("Adding %s to versions for %s", normalized_tag, model)
+                    new_version_entry = {"version": normalized_tag, "tag": tag}
+                    current_versions.append(new_version_entry)
+                    updated = True
 
         if current_versions:
             sorted_versions = sorted(
@@ -100,6 +102,23 @@ def update_model_versions(
                 spec["latest_version"] = nonignored_sorted[-1]["version"]
             else:
                 spec["latest_version"] = "0.0.0"
+
+        if not spec["in_data_hub"]:
+            continue
+        logger.info("Checking %s for new prerelease commits...", model)
+        new_sha = github_client.get_prerelease_model_commit(model)
+        if not new_sha:
+            logger.info("No prerelease commits found for %s", model)
+            continue
+        old_sha = spec.get("latest_prerelease_commit", "")
+        if new_sha != old_sha:
+            logger.info(
+                "New prerelease commit found for %s: %s",
+                model,
+                new_sha,
+            )
+            spec["latest_prerelease_commit"] = new_sha
+            updated = True
     return updated
 
 
