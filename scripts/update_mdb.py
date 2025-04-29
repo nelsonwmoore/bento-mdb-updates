@@ -122,7 +122,6 @@ def liquibase_update_flow(  # noqa: PLR0913, PLR0915
     from jnius import autoclass
 
     System = autoclass("java.lang.System")  # noqa: N806
-    File = autoclass("java.io.File")  # noqa: N806
     FileOutputStream = autoclass("java.io.FileOutputStream")  # noqa: N806
     PrintStream = autoclass("java.io.PrintStream")  # noqa: N806
 
@@ -140,10 +139,8 @@ def liquibase_update_flow(  # noqa: PLR0913, PLR0915
     err_file.close()
 
     orig_out, orig_err = System.out, System.err
-    java_out_file = File(str(out_file_path))
-    java_err_file = File(str(err_file_path))
-    fos_out = FileOutputStream(java_out_file)
-    fos_err = FileOutputStream(java_err_file)
+    fos_out = FileOutputStream(str(out_file_path))
+    fos_err = FileOutputStream(str(err_file_path))
 
     ps_out = PrintStream(fos_out)
     ps_err = PrintStream(fos_err)
