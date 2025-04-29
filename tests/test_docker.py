@@ -1,39 +1,34 @@
 """Test Docker image."""
 
 from pathlib import Path
-from typing import Generator
 
 import pytest
-from testcontainers.core.container import DockerContainer
-from testcontainers.core.image import DockerImage
-from testcontainers.core.waiting_utils import wait_for_logs
+from bento_meta.mdb.mdb import MDB
 
 PROJECT_ROOT = Path(__file__).parent.parent
-DOCKERFILE_PATH = PROJECT_ROOT / "config" / "Dockerfile"
+DOCKERFILE_PATH = PROJECT_ROOT / "Dockerfile"
 DOCKER_IMAGE_TAG = "mdb-update-test:latest"
+TEST_MDB_USER = "neo4j"
+TEST_MDB_PASSWORD = "neo4j1"
 
+
+# @pytest.mark.docker
+# def test_mdb(mdb_versioned):
+#     """Test that the MDB is running."""
+#     bolt_url, http_url = mdb_versioned
+#     mdb = MDB(uri=bolt_url, user=TEST_MDB_USER, password=TEST_MDB_PASSWORD)
+#     assert mdb
 
 @pytest.mark.docker
-class TestDockerImage:
-    """Test Docker image."""
-
-    @pytest.fixture(scope="session")
-    def container(self) -> Generator[DockerContainer, None, None]:
-        """Create a container from the Docker image."""
-        image = DockerImage(
-            path=PROJECT_ROOT,
-            tag=DOCKER_IMAGE_TAG,
-        )
-        image.build()
-
-        container = DockerContainer(DOCKER_IMAGE_TAG, tty=True, stdin_open=True)
-        container.start()
-        wait_for_logs(container, "Container started")
-        yield container
-        container.stop()
-
-    def test_java_installed(self, container: DockerContainer) -> None:
-        """Test that Java is installed."""
-        exit_code, output = container.exec(["java", "-version"])
-        assert exit_code == 0
-        assert "17" in output
+def test_prefect_flow(mdb_versioned, run_prefect_flow):
+    """Test that the Prefect flow is running."""
+    bolt_url, http_url = mdb_versioned
+    result = run_prefect_flow(
+        "tests/samples/test_prefect_flow.py",
+        "test-prefect-flow",
+        uri=bolt_url,
+        username=TEST_MDB_USER,
+        password=TEST_MDB_PASSWORD,
+    )
+    print(result)
+    assert result.returncode == 0
