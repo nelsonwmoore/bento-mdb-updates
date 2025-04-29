@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import shutil
 import stat
 import tempfile
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import click
@@ -104,7 +106,7 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
 
 
 @flow(name="liquibase-update", log_prints=True)
-def liquibase_update_flow(  # noqa: PLR0913, PLR0915
+def liquibase_update_flow(  # noqa: PLR0913
     mdb_uri: str,
     mdb_user: str,
     changelog_file: str,
@@ -119,33 +121,12 @@ def liquibase_update_flow(  # noqa: PLR0913, PLR0915
     import jnius_config
 
     jnius_config.add_options(f"-Xms{JVM_HEAP_MIN}", f"-Xmx{JVM_HEAP_MAX}")
-    from jnius import autoclass
-
-    System = autoclass("java.lang.System")  # noqa: N806
-    FileOutputStream = autoclass("java.io.FileOutputStream")  # noqa: N806
-    PrintStream = autoclass("java.io.PrintStream")  # noqa: N806
 
     # set up pyliquibase logger use prefect api log handler
     plb_logger = logging.getLogger("pyliquibase")
     plb_logger.setLevel(VALID_LOG_LEVELS[log_level])
     if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
         plb_logger.addHandler(APILogHandler())
-
-    # set up pyliquibase logger to get java steam output
-    out_file = tempfile.NamedTemporaryFile(delete=False)  # noqa: SIM115
-    err_file = tempfile.NamedTemporaryFile(delete=False)  # noqa: SIM115
-    out_file_path, err_file_path = Path(out_file.name), Path(err_file.name)
-    out_file.close()
-    err_file.close()
-
-    orig_out, orig_err = System.out, System.err
-    fos_out = FileOutputStream(str(out_file_path))
-    fos_err = FileOutputStream(str(err_file_path))
-
-    ps_out = PrintStream(fos_out)
-    ps_err = PrintStream(fos_err)
-    System.setOut(ps_out)
-    System.setErr(ps_err)
 
     defaults_file = set_defaults_file(
         mdb_uri,
@@ -163,29 +144,23 @@ def liquibase_update_flow(  # noqa: PLR0913, PLR0915
             logger.info(line)
     logger.info("Changelog file: %s", Path(changelog_file).resolve())
 
+    # capture output for logging
+    out_capture = io.StringIO()
+    err_capture = io.StringIO()
+
     try:
-        run_liquibase_update(defaults_file, dry_run=dry_run)
+        with redirect_stdout(out_capture), redirect_stderr(err_capture):
+            run_liquibase_update(defaults_file, dry_run=dry_run)
     finally:
-        System.setOut(orig_out)
-        System.setErr(orig_err)
-        ps_out.close()
-        ps_err.close()
-        fos_out.close()
-        fos_err.close()
-        with out_file_path.open() as f:
-            for line in f:
-                line = line.rstrip()  # noqa: PLW2901
-                if not line:
-                    continue
-                plb_logger.info(line)
-        with err_file_path.open() as f:
-            for line in f:
-                line = line.rstrip()  # noqa: PLW2901
-                if not line:
-                    continue
-                plb_logger.error(line)
-        out_file_path.unlink(missing_ok=True)
-        err_file_path.unlink(missing_ok=True)
+        for line in out_capture.getvalue().splitlines():
+            if not line.strip():
+                continue
+            plb_logger.info(line)
+        for line in err_capture.getvalue().splitlines():
+            if not line.strip():
+                continue
+            plb_logger.error(line)
+
         defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
 
     logger.info("Liquibase finished.")
