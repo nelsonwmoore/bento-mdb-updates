@@ -140,8 +140,8 @@ def liquibase_update_flow(  # noqa: PLR0913, PLR0915
     err_file.close()
 
     orig_out, orig_err = System.out, System.err
-    java_out_file = FileOutputStream(File(out_file_path))
-    java_err_file = FileOutputStream(File(err_file_path))
+    java_out_file = File(str(out_file_path))
+    java_err_file = File(str(err_file_path))
     fos_out = FileOutputStream(java_out_file)
     fos_err = FileOutputStream(java_err_file)
 
