@@ -104,7 +104,7 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
 
 
 @flow(name="liquibase-update", log_prints=True)
-def liquibase_update_flow(  # noqa: PLR0913
+def liquibase_update_flow(  # noqa: PLR0913, PLR0915
     mdb_uri: str,
     mdb_user: str,
     changelog_file: str,
@@ -122,7 +122,8 @@ def liquibase_update_flow(  # noqa: PLR0913
     from jnius import autoclass
 
     System = autoclass("java.lang.System")  # noqa: N806
-    ByteArrayOutputStream = autoclass("java.io.ByteArrayOutputStream")  # noqa: N806
+    File = autoclass("java.io.File")  # noqa: N806
+    FileOutputStream = autoclass("java.io.FileOutputStream")  # noqa: N806
     PrintStream = autoclass("java.io.PrintStream")  # noqa: N806
 
     # set up pyliquibase logger use prefect api log handler
@@ -132,10 +133,20 @@ def liquibase_update_flow(  # noqa: PLR0913
         plb_logger.addHandler(APILogHandler())
 
     # set up pyliquibase logger to get java steam output
+    out_file = tempfile.NamedTemporaryFile(delete=False)  # noqa: SIM115
+    err_file = tempfile.NamedTemporaryFile(delete=False)  # noqa: SIM115
+    out_file_path, err_file_path = Path(out_file.name), Path(err_file.name)
+    out_file.close()
+    err_file.close()
+
     orig_out, orig_err = System.out, System.err
-    baos_out, baos_err = ByteArrayOutputStream(), ByteArrayOutputStream()
-    ps_out = PrintStream(baos_out)
-    ps_err = PrintStream(baos_err)
+    java_out_file = FileOutputStream(File(out_file_path))
+    java_err_file = FileOutputStream(File(err_file_path))
+    fos_out = FileOutputStream(java_out_file)
+    fos_err = FileOutputStream(java_err_file)
+
+    ps_out = PrintStream(fos_out)
+    ps_err = PrintStream(fos_err)
     System.setOut(ps_out)
     System.setErr(ps_err)
 
@@ -158,15 +169,27 @@ def liquibase_update_flow(  # noqa: PLR0913
     try:
         run_liquibase_update(defaults_file, dry_run=dry_run)
     finally:
-        defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
         System.setOut(orig_out)
         System.setErr(orig_err)
-
-    # emit java logs to Python logger
-    for line in baos_out.toString().splitlines():
-        plb_logger.info(line)
-    for line in baos_err.toString().splitlines():
-        plb_logger.error(line)
+        ps_out.close()
+        ps_err.close()
+        fos_out.close()
+        fos_err.close()
+        with out_file_path.open() as f:
+            for line in f:
+                line = line.rstrip()  # noqa: PLW2901
+                if not line:
+                    continue
+                plb_logger.info(line)
+        with err_file_path.open() as f:
+            for line in f:
+                line = line.rstrip()  # noqa: PLW2901
+                if not line:
+                    continue
+                plb_logger.error(line)
+        out_file_path.unlink(missing_ok=True)
+        err_file_path.unlink(missing_ok=True)
+        defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
 
     logger.info("Liquibase finished.")
 
