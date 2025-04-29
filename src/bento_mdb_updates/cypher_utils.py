@@ -16,8 +16,9 @@ from minicypher.clauses import (
     OptionalMatch,
     Where,
 )
-from minicypher.entities import G, N, P, R, T, _condition, _return
+from minicypher.entities import G, N, R, T, _condition, _return
 from minicypher.functions import Func
+from minicypher.statement import Statement
 
 if TYPE_CHECKING:
     from bento_meta.entity import Entity
@@ -28,7 +29,19 @@ DEFAULT_AUTHOR = "DEFAULT"
 
 def cypherize_entity(entity: Entity) -> N:
     """Represent metamodel Entity object as a property graph Node."""
-    return N(label=entity.get_label(), props=entity.get_attr_dict())
+
+    # TODO: remove custom get_attr_dict when original preserves boolean values
+    def get_attr_dict_with_bool(entity: Entity) -> dict[str, str | bool]:
+        """Temporary workaround to preserve boolean values in get_attr_dict."""
+        return {
+            k: str(getattr(entity, k))
+            if not isinstance(getattr(entity, k), bool)
+            else getattr(entity, k)
+            for k in entity.attspec
+            if entity.attspec[k] == "simple" and getattr(entity, k) is not None
+        }
+
+    return N(label=entity.get_label(), props=get_attr_dict_with_bool(entity))  # type: ignore reportArgumentType
 
 
 def escape_quotes_in_attr(entity: Entity) -> None:
@@ -144,48 +157,6 @@ class ForEach(Clause):
 
     def __init__(self, *args):
         super().__init__(*args)
-
-
-class Statement:
-    """Create a Neo4j statement comprised of clauses (and strings) in order."""
-
-    def __init__(self, *args, terminate=False, use_params=False):
-        self.clauses = args
-        self.terminate = terminate
-        self.use_params = use_params
-        self._params = None
-
-    def __str__(self):
-        stash = P.parameterize
-        if self.use_params:
-            P.parameterize = True
-        else:
-            P.parameterize = False
-        ret = " ".join([str(x) for x in self.clauses])
-        if self.terminate:
-            ret = ret + ";"
-        P.parameterize = stash
-        return ret
-
-    @property
-    def params(self):
-        if self._params is None:
-            self._params = {}
-            for c in self.clauses:
-                for ent in c.args:
-                    if isinstance(ent, (N, R)):
-                        for p in ent.props.values():
-                            self._params[p.var] = p.value
-                    else:
-                        if "nodes" in vars(type(ent)):
-                            for n in ent.nodes():
-                                for p in n.props.values():
-                                    self._params[p.var] = p.value
-                        if "edges" in vars(type(ent)):
-                            for e in ent.edges():
-                                for p in e.props.values():
-                                    self._params[p.var] = p.value
-        return self._params
 
 
 class With(Clause):
