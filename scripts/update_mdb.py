@@ -85,21 +85,6 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
 
-    # Set Java system properties to control logging
-    from jnius import autoclass
-
-    System = autoclass("java.lang.System")  # noqa: N806
-    System.setProperty("liquibase.logLevel", "INFO")
-    System.setProperty("liquibase.logChannels", "all")
-    LogManager = autoclass("java.util.logging.LogManager")  # noqa: N806
-    Level = autoclass("java.util.logging.Level")  # noqa: N806
-    root_logger = LogManager.getLogManager().getLogger("")
-    liquibase_logger = LogManager.getLogManager().getLogger("liquibase")
-    if root_logger:
-        root_logger.setLevel(Level.INFO)
-    if liquibase_logger:
-        liquibase_logger.setLevel(Level.INFO)
-
     plb = Pyliquibase(
         defaultsFile=str(defaults_file),
         jdbcDriversDir=DRIVER_PATH,
@@ -111,6 +96,32 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     dest_lib = Path(plb.liquibase_lib_dir)
     shutil.copy(ext_jar, dest_lib)
     logger.info("Copied Neo4j extension JAR from %s to %s", ext_jar, dest_lib)
+
+    # try monkey patching Pyliquibase execute method to get java logs
+    original_execute = plb.execute
+
+    def patched_execute(*args, **kwargs):
+        """Patched execute method to enable logging before calling original."""
+        try:
+            import jnius
+
+            System = jnius.autoclass("java.lang.System")
+            LogManager = jnius.autoclass("java.util.logging.LogManager")
+            Level = jnius.autoclass("java.util.logging.Level")
+            System.setProperty("liquibase.logLevel", "INFO")
+            System.setProperty("liqubase.logChannels", "all")
+            root_logger = LogManager.getLogManager().getLogger("")
+            liquibase_logger = LogManager.getLogManager().getLogger("liquibase")
+            if root_logger:
+                root_logger.setLevel(Level.INFO)
+            if liquibase_logger:
+                liquibase_logger.setLevel(Level.INFO)
+            return original_execute(*args, **kwargs)
+        except Exception:
+            logger.exception("Error patching execute method")
+            raise
+
+    plb.execute = patched_execute
 
     out_capture = io.StringIO()
     err_capture = io.StringIO()
@@ -131,6 +142,7 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
             if not line.strip():
                 continue
             logger.error(line)
+        plb.execute = original_execute
 
 
 @flow(name="liquibase-update", log_prints=True)
