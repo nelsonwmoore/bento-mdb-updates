@@ -46,8 +46,8 @@ def set_defaults_file(
     changelog_file: str,
     mdb_id: str,
     log_level: str,
-) -> Path:
-    """Create temporary defaults file and return path."""
+) -> tuple[Path, Path]:
+    """Create temporary defaults file; returns paths of defaults file and log file."""
     logger = get_run_logger()
     if mdb_id not in VALID_MDB_IDS:
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
@@ -65,6 +65,12 @@ def set_defaults_file(
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
     if mdb_id.startswith("og-mdb"):
         password = ""
+
+    # create liquibase log file
+    log_file = tempfile.NamedTemporaryFile(suffix=".log", delete=False)  # noqa: SIM115
+    log_file_path = Path(log_file.name)
+    log_file.close()
+
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(f"changelogFile: {changelog_file}\n")
         f.write(f"url: {uri}\n")
@@ -72,16 +78,22 @@ def set_defaults_file(
         f.write(f"password: {password}\n")
         f.write(f"classpath: {DRIVER_PATH}\n")
         f.write(f"driver: {DRIVER_NAME}\n")
-        f.write(f"logLevel: {log_level}")
+        f.write(f"logLevel: {log_level}\n")
+        f.write(f"logFile: {log_file_path}\n")
         temp_file_path = Path(f.name)
     temp_file_path.chmod(
         stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP,
     )  # User/group read/write only
-    return temp_file_path
+    return temp_file_path, log_file_path
 
 
 @task
-def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) -> None:
+def run_liquibase_update(
+    defaults_file: Path | str,
+    log_file: Path,
+    *,
+    dry_run: bool = False,
+) -> None:
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
 
@@ -96,32 +108,6 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     dest_lib = Path(plb.liquibase_lib_dir)
     shutil.copy(ext_jar, dest_lib)
     logger.info("Copied Neo4j extension JAR from %s to %s", ext_jar, dest_lib)
-
-    # try monkey patching Pyliquibase execute method to get java logs
-    original_execute = plb.execute
-
-    def patched_execute(*args, **kwargs):
-        """Patched execute method to enable logging before calling original."""
-        try:
-            import jnius
-
-            System = jnius.autoclass("java.lang.System")
-            LogManager = jnius.autoclass("java.util.logging.LogManager")
-            Level = jnius.autoclass("java.util.logging.Level")
-            System.setProperty("liquibase.logLevel", "INFO")
-            System.setProperty("liqubase.logChannels", "all")
-            root_logger = LogManager.getLogManager().getLogger("")
-            liquibase_logger = LogManager.getLogManager().getLogger("liquibase")
-            if root_logger:
-                root_logger.setLevel(Level.INFO)
-            if liquibase_logger:
-                liquibase_logger.setLevel(Level.INFO)
-            return original_execute(*args, **kwargs)
-        except Exception:
-            logger.exception("Error patching execute method")
-            raise
-
-    plb.execute = patched_execute
 
     out_capture = io.StringIO()
     err_capture = io.StringIO()
@@ -142,7 +128,22 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
             if not line.strip():
                 continue
             logger.error(line)
-        plb.execute = original_execute
+        if log_file.exists():
+            logger.info("Reading Liquibase logs from %s", log_file)
+            try:
+                with log_file.open("r") as f:
+                    for line in f:
+                        strip_line = line.strip()
+                        if not strip_line:
+                            continue
+                        if "ERROR" in strip_line or "SEVERE" in strip_line:
+                            logger.error(strip_line)
+                        elif "WARNING" in strip_line:
+                            logger.warning(strip_line)
+                        else:
+                            logger.info(strip_line)
+            except Exception:
+                logger.exception("Error reading Liquibase logs from %s", log_file)
 
 
 @flow(name="liquibase-update", log_prints=True)
@@ -168,7 +169,7 @@ def liquibase_update_flow(  # noqa: PLR0913
     if not any(isinstance(h, APILogHandler) for h in plb_logger.handlers):
         plb_logger.addHandler(APILogHandler())
 
-    defaults_file = set_defaults_file(
+    defaults_file, log_file = set_defaults_file(
         mdb_uri,
         mdb_user,
         changelog_file,
@@ -188,6 +189,11 @@ def liquibase_update_flow(  # noqa: PLR0913
         run_liquibase_update(defaults_file, dry_run=dry_run)
     finally:
         defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
+        if log_file.exists():
+            try:
+                log_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
+            except Exception:
+                logger.exception("Error deleting log file %s", log_file)
 
     logger.info("Liquibase finished.")
 
