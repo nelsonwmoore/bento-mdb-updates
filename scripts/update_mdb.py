@@ -85,6 +85,21 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     """Run Liquibase Update on Changelog."""
     logger = get_run_logger()
 
+    # Set Java system properties to control logging
+    from jnius import autoclass
+
+    System = autoclass("java.lang.System")  # noqa: N806
+    System.setProperty("liquibase.logLevel", "INFO")
+    System.setProperty("liquibase.logChannels", "all")
+    LogManager = autoclass("java.util.logging.LogManager")  # noqa: N806
+    Level = autoclass("java.util.logging.Level")  # noqa: N806
+    root_logger = LogManager.getLogManager().getLogger("")
+    liquibase_logger = LogManager.getLogManager().getLogger("liquibase")
+    if root_logger:
+        root_logger.setLevel(Level.INFO)
+    if liquibase_logger:
+        liquibase_logger.setLevel(Level.INFO)
+
     plb = Pyliquibase(
         defaultsFile=str(defaults_file),
         jdbcDriversDir=DRIVER_PATH,
@@ -97,12 +112,25 @@ def run_liquibase_update(defaults_file: Path | str, *, dry_run: bool = False) ->
     shutil.copy(ext_jar, dest_lib)
     logger.info("Copied Neo4j extension JAR from %s to %s", ext_jar, dest_lib)
 
-    if dry_run:
-        logger.info("Running updateSQL (dry run)...")
-        plb.updateSQL()
-    else:
-        logger.info("Running update...")
-        plb.update()
+    out_capture = io.StringIO()
+    err_capture = io.StringIO()
+    try:
+        with redirect_stdout(out_capture), redirect_stderr(err_capture):
+            if dry_run:
+                logger.info("Running updateSQL (dry run)...")
+                plb.updateSQL()
+            else:
+                logger.info("Running update...")
+                plb.update()
+    finally:
+        for line in out_capture.getvalue().splitlines():
+            if not line.strip():
+                continue
+            logger.info(line)
+        for line in err_capture.getvalue().splitlines():
+            if not line.strip():
+                continue
+            logger.error(line)
 
 
 @flow(name="liquibase-update", log_prints=True)
@@ -144,23 +172,9 @@ def liquibase_update_flow(  # noqa: PLR0913
             logger.info(line)
     logger.info("Changelog file: %s", Path(changelog_file).resolve())
 
-    # capture output for logging
-    out_capture = io.StringIO()
-    err_capture = io.StringIO()
-
     try:
-        with redirect_stdout(out_capture), redirect_stderr(err_capture):
-            run_liquibase_update(defaults_file, dry_run=dry_run)
+        run_liquibase_update(defaults_file, dry_run=dry_run)
     finally:
-        for line in out_capture.getvalue().splitlines():
-            if not line.strip():
-                continue
-            plb_logger.info(line)
-        for line in err_capture.getvalue().splitlines():
-            if not line.strip():
-                continue
-            plb_logger.error(line)
-
         defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
 
     logger.info("Liquibase finished.")

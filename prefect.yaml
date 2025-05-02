@@ -57,6 +57,6 @@ deployments:
   entrypoint: scripts/update_mdb.py:liquibase_update_flow
   parameters: {}
   work_pool:
-    name: mdb-8gb-prefect-2.20.3-python3.9
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
