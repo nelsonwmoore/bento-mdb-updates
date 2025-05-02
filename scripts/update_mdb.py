@@ -186,7 +186,7 @@ def liquibase_update_flow(  # noqa: PLR0913
     logger.info("Changelog file: %s", Path(changelog_file).resolve())
 
     try:
-        run_liquibase_update(defaults_file, dry_run=dry_run)
+        run_liquibase_update(defaults_file, log_file, dry_run=dry_run)
     finally:
         defaults_file.unlink(missing_ok=True)  # type:ignore reportAttributeAccessIssue
         if log_file.exists():
