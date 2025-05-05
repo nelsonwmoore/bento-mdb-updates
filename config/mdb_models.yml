@@ -32,7 +32,7 @@ CCDI:
   - version: 2.1.0
     tag: 2.1.0
   latest_version: 2.1.0
-  latest_prerelease_commit: f4b599bcef8200d46646a6aa802eaae5b1793870
+  latest_prerelease_commit: 98feaf2879d6ccbfff87392bfa303ef31d6c7ee1
 CDS:
   repository: CBIIT/cds-model
   mdf_directory: model-desc
@@ -99,7 +99,7 @@ CTDC:
   - version: 1.2.0
     tag: 1.2.0
   latest_version: 1.2.0
-  latest_prerelease_commit: b459e28aece2177039eb05217da1f04ef609ba64
+  latest_prerelease_commit: d98a54d4b00664110307dabe4c12863c3154dbc9
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
