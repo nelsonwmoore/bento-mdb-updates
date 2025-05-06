@@ -17,6 +17,7 @@ dependencies = [
     "minicypher>=0.1.1",
     "packaging>=24.2",
     "prefect==3.3.4",
+    "pygithub>=2.6.1",
     "pyliquibase>=2.4.0",
     "pytest>=8.3.4",
     "stamina>=24.3.0",

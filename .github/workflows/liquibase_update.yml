@@ -3,21 +3,42 @@ name: Update MDB and Data Hub Terms
 on:
   workflow_call:
     inputs:
+      mdb_uri:
+        description: "metamodel database URI"
+        required: true
+        type: string
+      mdb_user:
+        description: "metamodel database username"
+        required: true
+        type: string
       changelog_files:
         description: "JSON array of changelog files to update"
         required: true
         type: string
-      affected_models:
-        description: "JSON array of affected models with model and version"
+      mdb_id:
+        description: "ID of MDB to update"
         required: true
         type: string
+      dh_tier:
+        description: "Data Hub tier to update"
+        required: true
+        type: string
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        type: boolean
+        default: true
     secrets:
-      NEO4J_MDB_URI:
-        required: true
-      NEO4J_MDB_USER:
-        required: true
-      NEO4J_MDB_PASS:
-        required: true
       PREFECT_API_KEY:
         required: true
       PREFECT_API_URL:
@@ -26,7 +47,7 @@ on:
         required: true
 
 jobs:
-  update-mdb:
+  update-mdb-and-dh:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -64,106 +85,23 @@ jobs:
               continue
             fi
 
-            prefect deployment run liquibase-update \
-              --params "{\"mdb_uri\": \"${{ secrets.NEO4J_MDB_URI }}\", \"mdb_user\": \"${{ secrets.NEO4J_MDB_USER }}\", \"mdb_pass\": \"${{ secrets.NEO4J_MDB_PASS }}\", \"changelog_file\": \"$file\"}"
+            PARAMS=$(jq -n \
+            --arg uri "${{ inputs.mdb_uri }}" \
+            --arg user "${{ inputs.mdb_user }}" \
+            --arg file "$file" \
+            --arg id "${{ inputs.mdb_id }}" \
+            --arg log_level "${{ inputs.log_level || 'info' }}" \
+            --arg dry_run "${{ inputs.dry_run || 'false' }}" \
+            --arg no_commit "${{ inputs.no_commit || 'true' }}" \
+            '{
+              "mdb_uri": $uri,
+              "mdb_user": $user,
+              "changelog_file": $file,
+              "mdb_id": $id,
+              "log_level": $log_level,
+              "dry_run": $dry_run,
+              "no_commit": $no_commit
+            }')
+
+            prefect deployment run update-mdb-and-dh/update-mdb-and-dh --params "$PARAMS"
           done
-
-  update-datahub-terms:
-    runs-on: ubuntu-latest
-    needs: [update-mdb]
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version-file: ".python-version"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "0.5.10"
-
-      - name: Install dependencies and project
-        run: |
-          uv pip install --system -e .
-          uv sync --all-extras --dev
-
-      - name: Filter datahub models
-        id: filter-models
-        run: |
-          FILTERED_MODELS=$(filter_datahub_models \
-            --affected_models_json='${{ inputs.affected_models }}' \
-            --model_specs_yaml=config/mdb_models.yml)
-          
-          echo "filtered_models=$FILTERED_MODELS" >> $GITHUB_OUTPUT
-          echo "Filtered models: $FILTERED_MODELS"
-          
-          # Save filtered models to file for subsequent steps
-          echo "$FILTERED_MODELS" > filtered_models.json
-
-      - name: Generate CDE PV & Synonym JSON files for filtered models
-        id: generate-sts-json
-        if: steps.filter-models.outputs.filtered_models != '[]'
-        run: |
-          mkdir -p sts_json_files
-          for row in $(cat filtered_models.json | jq -r '.[] | @base64'); do
-            # Extract model and version
-            _jq() {
-              echo ${row} | base64 --decode | jq -r ${1}
-            }
-            
-            MODEL=$(_jq '.model')
-            VERSION=$(_jq '.version')
-            
-            echo "Generating CDE PV & Synonym JSON for $MODEL version $VERSION"
-            get_pvs_json \
-            --mdb_uri="${{ secrets.NEO4J_MDB_URI }}" \
-            --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
-            --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \
-            --model "$MODEL" \
-            --version "$VERSION" \
-            > sts_json_files/${MODEL}_${VERSION}_sts.json
-          done
-          
-          # List generated files
-          echo "Generated the following STS JSON files:"
-          ls -la sts_json_files/
-
-      - name: Checkout crdc-datahub-terms repository
-        if: steps.filter-models.outputs.filtered_models != '[]'
-        uses: actions/checkout@v3
-        with:
-          repository: CBIIT/crdc-datahub-terms
-          ref: dev2
-          token: ${{ secrets.GH_PAT }}
-          path: datahub-terms-repo
-
-      - name: Copy CDE PV & Synonym JSON files to crdc-datahub-terms repo
-        if: steps.filter-models.outputs.filtered_models != '[]'
-        run: |
-          cp sts_json_files/* datahub-terms-repo/
-          echo "Copied all STS JSON files to datahub-terms-repo/ directory."
-          ls -la datahub-terms-repo/*.json
-
-      - name: Commit and push report
-        if: steps.filter-models.outputs.filtered_models != '[]'
-        working-directory: datahub-terms-repo
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-          
-          # Add all STS JSON files
-          git add *_sts.json
-
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "No changes to commit in crdc-datahub-terms repository"
-            exit 0
-          fi
-          
-          # Get list of models for commit message
-          MODEL_LIST=$(cat ../filtered_models.json | jq -r '.[] | "\(.model)_v\(.version)"' | tr '\n' ', ' | sed 's/,$//')
-          
-          git commit -m "Update STS JSONs for models: $MODEL_LIST"
-          git push

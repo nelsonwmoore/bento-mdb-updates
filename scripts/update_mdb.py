@@ -88,7 +88,7 @@ def set_defaults_file(
 
 
 @task
-def run_liquibase_update(
+def run_liquibase_update(  # noqa: C901, PLR0912
     defaults_file: Path | str,
     log_file: Path,
     *,

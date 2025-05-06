@@ -369,7 +369,7 @@ class NCItClient:
         return result, affected_models
 
 
-class GitHubClient:
+class GitHubClient:  # TODO: replace with GitHub API client
     """Client to interact with GitHub API."""
 
     BASE_URL = "https://api.github.com"
