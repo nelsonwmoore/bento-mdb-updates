@@ -97,7 +97,7 @@ TEST_ANNOTATION_SPEC = AnnotationSpec(
                     "origin_id": "C14225",
                     "origin_definition": "The bipedal primate mammal, Homo sapiens; belonging to man or mankind; pertaining to man or to the race of man; use of man as experimental subject or unit of analysis in research.",
                     "origin_name": "NCIt",
-                }
+                },
             ],
         },
         {
@@ -467,7 +467,7 @@ TEST_NCIM_MAPPING = {
             "origin_name": "LNC",
             "origin_version": "1",
             "value": "Pediatric",
-        }
+        },
     ],
     # multiple synonyms
     "C17998": [
@@ -491,7 +491,7 @@ TEST_NCIM_MAPPING = {
             "origin_name": "SNOMEDCT_US",
             "origin_version": "20020131",
             "value": "Tests",
-        }
+        },
     ],
 }
 
@@ -626,7 +626,7 @@ TEST_ANNOTATION_SPEC_NCIM = AnnotationSpec(
                     "value": "UNKNWN",
                 },
             ],
-        }
+        },
     ],
 )
 
@@ -666,7 +666,7 @@ TEST_MODEL_SPEC = {
             "in_data_hub": True,
             "versions": [{"version": "1.0.0", "tag": "1.0.0-release"}],
             "latest_version": "1.0.0",
-        }
+        },
     ),
     "TCCDI": ModelSpec(
         {
@@ -683,7 +683,7 @@ TEST_MODEL_SPEC = {
                 {"version": "2.0.0", "tag": "2.0.0"},
             ],
             "latest_version": "2.0.0",
-        }
+        },
     ),
 }
 
@@ -732,7 +732,7 @@ TEST_MAKE_MODEL_CDE_SPEC_BASE = ModelCDESpec(
                     },
                 },
                 "value_set": [],
-            }
+            },
         ],
-    }
+    },
 )
