@@ -2,7 +2,7 @@ name: Generate and Commit Term Update Changelog
 
 on:
   schedule:
-    - cron: "0 0 * * 0" # runs every Sunday at midnight UTC
+    - cron: "12 5 * * 1" # runs weekly on Saturday at 05:12 UTC/01:12 AM EDT
   workflow_dispatch:
     inputs:
       author:
@@ -42,7 +42,7 @@ jobs:
       - name: Update terms
         id: update-terms
         run: |
-          RESULT=$(update_terms \
+          RESULT=$(prefect deployment run update-terms/update-terms \
             --mdb_uri="${{ secrets.NEO4J_MDB_URI }}" \
             --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
             --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \

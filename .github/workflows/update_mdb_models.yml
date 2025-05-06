@@ -28,6 +28,10 @@ on:
         description: "Only include datahub models"
         required: false
         default: "false"
+      mdb_id:
+        description: "ID of MDB to update"
+        required: true
+        type: string
 
 jobs:
   determine-models:
@@ -65,7 +69,7 @@ jobs:
               --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
               --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \
               --model_specs_yaml="${{ github.event.inputs.models_spec_path }}" \
-              --datahub_only="${{ github.event.inputs.datahub_only }}" \
+              --datahub_only="${{ github.event.inputs.datahub_only || 'false' }}" \
               > matrix.json
           fi
           MATRIX=$(cat matrix.json)
@@ -111,7 +115,7 @@ jobs:
 
           mkdir -p data/output/model_changelogs/${{ matrix.model }}/
 
-          make_model_changelogs \
+          make_model_changelog \
           --model_handle="${{ matrix.model }}" \
           --model_version="${{ matrix.version }}" \
           $MDF_FILES_OPTIONS \
@@ -203,11 +207,12 @@ jobs:
           echo "all_changelog_files=$ALL_CHANGELOGS" >> $GITHUB_OUTPUT
           echo "All changelog files: $ALL_CHANGELOGS"
 
-  liquibase-update:
+  update-mdb-and-dh:
     needs: [determine-models, collect-all-changelogs]
     if: needs.determine-models.outputs.affected_models != '{}' && needs.determine-models.outputs.affected_models != '[]' && needs.collect-all-changelogs.outputs.all_changelog_files != '[]'
-    uses: ./.github/workflows/liquibase_update.yml
+    uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
       changelog_files: ${{ needs.collect-all-changelogs.outputs.all_changelog_files }}
       affected_models: ${{ needs.determine-models.outputs.affected_models }}
+      mdb_id: # TODO: designate mdb id (either "og-mdb-dev" or "og-mdb-nightly" or given)
