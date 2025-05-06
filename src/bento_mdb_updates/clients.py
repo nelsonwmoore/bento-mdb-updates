@@ -83,11 +83,12 @@ class CADSRClient:
                     "ncit_concept_codes": [],
                     "synonyms": [],
                 }
-                for concept in pv["ValueMeaning"].get("Concepts", []):
+                vm_concepts = pv["ValueMeaning"].get("Concepts", [])
+                for concept in vm_concepts:
                     if concept.get("evsSource") != "NCI_CONCEPT_CODE":
                         continue
                     pv_dict["ncit_concept_codes"].append(concept["conceptCode"])
-                    if len(pv["ValueMeaning"]["Concepts"]) > 1:
+                    if len(vm_concepts) > 1:
                         msg = "Multiple NCIt concepts found for PV %s: %sv%s"
                         logger.warning(
                             msg,
@@ -95,7 +96,7 @@ class CADSRClient:
                             pv["ValueMeaning"]["publicId"],
                             pv["ValueMeaning"]["version"],
                         )
-                        continue
+                        continue  # TODO: break out of concepts loop?
                     pv_dict["synonyms"].append(
                         {
                             "value": concept["longName"],
