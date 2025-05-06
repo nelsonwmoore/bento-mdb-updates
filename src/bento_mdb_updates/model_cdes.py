@@ -8,14 +8,17 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-from bento_mdb_updates.datatypes import PermissibleValue
-
 if TYPE_CHECKING:
     from bento_meta.mdb.mdb import MDB
     from bento_meta.model import Model
 
     from bento_mdb_updates.clients import CADSRClient, NCItClient
-    from bento_mdb_updates.datatypes import MDBCDESpec, ModelCDESpec, ModelSpec
+    from bento_mdb_updates.datatypes import (
+        MDBCDESpec,
+        ModelCDESpec,
+        ModelSpec,
+        PermissibleValue,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -207,16 +210,20 @@ def get_cdes_from_mdb(mdb: MDB) -> list[MDBCDESpec]:
     """Get CDEs, CDE PVs, PV Synonyms mapped by NCIt from an MDB."""
     qry = (
         "MATCH (cde:term) WHERE toLower(cde.origin_name) CONTAINS 'cadsr' WITH cde "
-        "OPTIONAL MATCH (vs:value_set {handle: cde.origin_id + '|' + "
-        "COALESCE(cde.origin_version, '')})-[:has_term]->(pv:term) "
         "OPTIONAL MATCH (ent)-[:has_property]->(p:property)-[:has_concept]->(:concept)"
         "<-[:represents]-(cde) WHERE p.model IS NOT NULL AND p.version IS NOT NULL "
-        "WITH cde, pv, COLLECT(DISTINCT {model: p.model, version: p.version, "
+        "WITH cde, COLLECT(DISTINCT {model: p.model, version: p.version, "
         "property: ent.handle + '.' + p.handle}) AS models "
-        "WHERE pv IS NOT NULL "
-        "OPTIONAL MATCH (pv)-[:represents]->(c:concept)<-[:represents]-(syn:term), "
-        "(c)-[:has_tag]->(g:tag {key: 'mapping_source'}) WHERE toLower(g.value) "
-        "IN ['ncim', 'ncit'] AND pv <> syn "
+        "WITH cde, models, cde.origin_id + '|' + COALESCE(cde.origin_version, '') "
+        "AS cde_hdl OPTIONAL MATCH (vs:value_set {handle: cde_hdl})-[:has_term]->"
+        "(pv:term) WITH cde, models, COLLECT(DISTINCT pv) AS pvs "
+        "WHERE size(pvs) > 0 UNWIND pvs as pv "
+        "OPTIONAL MATCH (pv)-[:represents]->(c_cadsr:concept)<-[:represents]-"
+        "(ncit_term:term {origin_name: 'NCIt'}), "
+        "(c_cadsr)-[:has_tag]->(:tag {key: 'mapping_source', value: 'caDSR'}) "
+        "OPTIONAL MATCH (ncit_term)-[:represents]->(c_ncim:concept)<-[:represents]-"
+        "(syn:term), (c_ncim)-[:has_tag]->(:tag {key: 'mapping_source', value: 'NCIm'})"
+        " WHERE pv <> syn AND pv.value <> syn.value "
         "WITH cde, models, pv, COLLECT(DISTINCT {value: syn.value, origin_id: "
         "syn.origin_id, origin_name: syn.origin_name, origin_version: "
         "syn.origin_version}) AS synonyms "
@@ -238,7 +245,7 @@ def set_ncit_concept_codes(pv: PermissibleValue) -> None:
             syn["origin_id"]
             for syn in pv.get("synonyms", [])
             if syn.get("origin_name") == "NCIt" and syn.get("origin_id") is not None
-        }
+        },
     )
 
 
