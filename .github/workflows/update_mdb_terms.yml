@@ -112,10 +112,17 @@ jobs:
             "commit": $commit,
             "no_commit": $no_commit
           }')
+          echo "PARAMS=$PARAMS"
 
-          RESULT=$(prefect deployment run update-terms/update-terms --params "$PARAMS")
+          RESULT=$(prefect deployment run update-terms/update-terms --params "$PARAMS" 2>&1) || true
+          echo "PREFECT OUTPUT:"
+          echo "$RESULT"
 
-          CHANGELOG_FILES=$(echo $RESULT | jq -r '.changelog_files')
+          CHANGELOG_FILES=$(echo $RESULT | jq -r '.changelog_files // empty')
+          if [ -z "$CHANGELOG_FILES" ]; then
+            echo "::error:: no .changelog_files in Prefect output, aborting"
+            exit 1
+          fi
 
           echo "changelog_files=$CHANGELOG_FILES" >> $GITHUB_OUTPUT
           echo "mdb_name=${{ matrix.name }}" >> $GITHUB_OUTPUT
