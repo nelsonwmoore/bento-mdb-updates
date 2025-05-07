@@ -44,6 +44,8 @@ def get_current_mdb_cdes(
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
     if mdb_id.startswith("og-mdb"):
         password = ""
+    if mdb_uri.startswith("jdbc:neo4j:"):
+        mdb_uri = mdb_uri.replace("jdbc:neo4j:", "")
 
     # Get current MDB CDE Pvs & Synonyms
     mdb = MDB(

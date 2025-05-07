@@ -67,6 +67,9 @@ def get_pvs_json(
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
     if mdb_id.startswith("og-mdb"):
         password = ""
+    if mdb_uri.startswith("jdbc:neo4j:"):
+        mdb_uri = mdb_uri.replace("jdbc:neo4j:", "")
+
     mdb = MDB(
         uri=mdb_uri,
         user=mdb_user,
