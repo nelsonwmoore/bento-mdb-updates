@@ -96,6 +96,9 @@ jobs:
       
       - name: Update terms
         id: update-terms
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
         run: |
           PARAMS=$(jq -n \
           --arg mdb_uri "${{ matrix.mdb_uri }}" \
