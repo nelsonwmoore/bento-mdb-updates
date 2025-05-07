@@ -59,7 +59,11 @@ def fake_requests_get(monkeypatch):
     ):
         def fake_get(url, timeout=5, headers=None):
             return FakeResponse(
-                json_data, text_data, content, status_code, raise_json_error
+                json_data,
+                text_data,
+                content,
+                status_code,
+                raise_json_error,
             )
 
         monkeypatch.setattr(requests, "get", fake_get)
@@ -100,18 +104,17 @@ class TestCADSRClient:
                                     "evsSource": "NCI_CONCEPT_CODE",
                                     "primaryIndicator": "Yes",
                                     "displayOrder": "0",
-                                }
+                                },
                             ],
                         },
-                    }
-                ]
+                    },
+                ],
             },
-        }
+        },
     }
 
     def test_fetch_cde_valueset(self, fake_requests_get) -> None:
         """Happy path test for fetch_cde_valueset."""
-
         fake_requests_get(self.SAMPLE_RESPONSE)
         actual = self.client.fetch_cde_valueset("11524549", "1")
         expected = [
@@ -128,9 +131,9 @@ class TestCADSRClient:
                         "origin_id": "C39299",
                         "origin_definition": "Having to do with children.",
                         "origin_name": "NCIt",
-                    }
+                    },
                 ],
-            }
+            },
         ]
         assert_equal(actual, expected)
 
@@ -149,7 +152,7 @@ class TestCADSRClient:
     def test_missing_pvs(self, fake_requests_get) -> None:
         """Test that no PVs are returned when no PVs are found."""
         incomplete_response = {
-            "DataElement": {"publicId": "11524549", "version": "1", "ValueDomain": {}}
+            "DataElement": {"publicId": "11524549", "version": "1", "ValueDomain": {}},
         }
         fake_requests_get(incomplete_response)
         actual = self.client.fetch_cde_valueset("11524549", "1")
@@ -162,7 +165,7 @@ class TestCADSRClient:
                 "publicId": "11524549",
                 "version": "1",
                 "ValueDomain": {"PermissibleValues": []},
-            }
+            },
         }
         fake_requests_get(empty_pvs_response)
         actual = self.client.fetch_cde_valueset("11524549", "1")
@@ -225,7 +228,7 @@ class TestCADSRClient:
                     },
                 },
                 value_set=[new_pv],
-            )
+            ),
         ]
         expected_models = {
             (x["model"], x["version"]) for x in TEST_MDB_CDE_SPEC["models"]
@@ -234,7 +237,9 @@ class TestCADSRClient:
         assert_equal(models, expected_models)
 
     def test_check_cdes_against_mdb_raises_error_no_pvs(
-        self, monkeypatch, caplog
+        self,
+        monkeypatch,
+        caplog,
     ) -> None:
         client = CADSRClient()
         monkeypatch.setattr(
@@ -252,7 +257,7 @@ class TestCADSRClient:
 class TestNCItClient:
     def test_get_readme_date_success(self, mock_ncit_client, fake_requests_get) -> None:
         fake_requests_get(
-            text_data="NCIm version: 202503\nSource\tVersion\nGO\t2024_03_28"
+            text_data="NCIm version: 202503\nSource\tVersion\nGO\t2024_03_28",
         )
         actual = mock_ncit_client.get_readme_date()
         assert actual is not None
@@ -264,14 +269,18 @@ class TestNCItClient:
         assert_equal(actual, None)
 
     def test_get_readme_date_http_error(
-        self, mock_ncit_client, fake_requests_get
+        self,
+        mock_ncit_client,
+        fake_requests_get,
     ) -> None:
         fake_requests_get(status_code=404)
         with pytest.raises(HTTPError):
             mock_ncit_client.get_readme_date()
 
     def test_download_and_extract_tsv_success(
-        self, mock_ncit_client, fake_requests_get
+        self,
+        mock_ncit_client,
+        fake_requests_get,
     ) -> None:
         mock_name = "NCIt_Metathesaurus_Mapping.txt"
         zip = create_mock_zip(mock_name, TEST_NCIM_MAPPING_TSV)
@@ -280,7 +289,9 @@ class TestNCItClient:
         assert_equal(actual, TEST_NCIM_MAPPING)
 
     def test_download_and_extract_tsv_empty_zip(
-        self, mock_ncit_client, fake_requests_get
+        self,
+        mock_ncit_client,
+        fake_requests_get,
     ) -> None:
         mock_name = "empty.txt"
         zip = create_mock_zip(mock_name, "")
@@ -289,18 +300,22 @@ class TestNCItClient:
         assert_equal(actual, {})
 
     def test_download_and_extract_tsv_missing_tsv(
-        self, mock_ncit_client, fake_requests_get
+        self,
+        mock_ncit_client,
+        fake_requests_get,
     ) -> None:
         mock_name = "wrong-file.txt"
         zip = create_mock_zip(mock_name, "")
         fake_requests_get(content=zip)
         with pytest.raises(KeyError):
             mock_ncit_client.download_and_extract_tsv(
-                mock_ncit_client.DEFAULT_NCIM_TSV.name
+                mock_ncit_client.DEFAULT_NCIM_TSV.name,
             )
 
     def test_download_and_extract_tsv_invalid_zip(
-        self, mock_ncit_client, fake_requests_get
+        self,
+        mock_ncit_client,
+        fake_requests_get,
     ) -> None:
         invalid_zip_content = b"Invalid ZIP file"
         fake_requests_get(content=invalid_zip_content)
@@ -308,10 +323,14 @@ class TestNCItClient:
             mock_ncit_client.download_and_extract_tsv()
 
     def test_ncit_for_updated_mappings_update(
-        self, monkeypatch, mock_ncit_client
+        self,
+        monkeypatch,
+        mock_ncit_client,
     ) -> None:
         monkeypatch.setattr(
-            mock_ncit_client, "get_readme_date", lambda: datetime.datetime(2025, 3, 1)
+            mock_ncit_client,
+            "get_readme_date",
+            lambda: datetime.datetime(2025, 3, 1),
         )
         monkeypatch.setattr(
             "bento_mdb_updates.clients.get_last_sync_date",
@@ -326,10 +345,14 @@ class TestNCItClient:
         assert_equal(mock_ncit_client.check_ncit_for_updated_mappings(), True)
 
     def test_ncit_for_updated_mappings_no_update(
-        self, monkeypatch, mock_ncit_client
+        self,
+        monkeypatch,
+        mock_ncit_client,
     ) -> None:
         monkeypatch.setattr(
-            mock_ncit_client, "get_readme_date", lambda: datetime.datetime(2025, 2, 1)
+            mock_ncit_client,
+            "get_readme_date",
+            lambda: datetime.datetime(2025, 2, 1),
         )
         monkeypatch.setattr(
             "bento_mdb_updates.clients.get_last_sync_date",
@@ -339,16 +362,21 @@ class TestNCItClient:
         assert_equal(mock_ncit_client.check_ncit_for_updated_mappings(), False)
 
     def test_check_synonyms_against_mdb_no_update(
-        self, mock_ncit_client, fake_requests_get, monkeypatch
+        self,
+        mock_ncit_client,
+        fake_requests_get,
+        monkeypatch,
     ) -> None:
-        annotations, models = mock_ncit_client.check_synonyms_against_mdb(
-            TEST_MDB_CDES_NCIM
+        annotations = mock_ncit_client.check_synonyms_against_mdb(
+            TEST_MDB_CDES_NCIM,
         )
         assert_equal(annotations, [])
-        assert_equal(models, set())
 
     def test_check_synonyms_against_mdb_new_pv(
-        self, mock_ncit_client, fake_requests_get, monkeypatch
+        self,
+        mock_ncit_client,
+        fake_requests_get,
+        monkeypatch,
     ) -> None:
         client = mock_ncit_client
         client.ncim_mapping["C17998"].append(
@@ -357,14 +385,13 @@ class TestNCItClient:
                 "origin_name": "TERMS-R-US",
                 "origin_version": "20000101",
                 "value": "UNKNWN",
-            }
+            },
         )
-        annotations, models = mock_ncit_client.check_synonyms_against_mdb(
-            TEST_MDB_CDES_NCIM
+        annotations = mock_ncit_client.check_synonyms_against_mdb(
+            TEST_MDB_CDES_NCIM,
         )
         expected_annotations = [TEST_ANNOTATION_SPEC_NCIM]
         expected_models = {
             (x["model"], x["version"]) for x in TEST_MDB_CDE_SPEC["models"]
         }
         assert_equal(annotations, expected_annotations)
-        assert_equal(models, expected_models)
