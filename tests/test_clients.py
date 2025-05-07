@@ -179,9 +179,8 @@ class TestCADSRClient:
             lambda cde_id, cde_version: TEST_CADSR_RESPONSE_MDB_CDES,
         )
 
-        annotations, models = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
+        annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         assert_equal(annotations, [])
-        assert_equal(models, set())
 
     def test_check_cdes_against_mdb_new_pv(self, monkeypatch) -> None:
         client = CADSRClient()
@@ -214,7 +213,7 @@ class TestCADSRClient:
             "fetch_cde_valueset",
             lambda cde_id, cde_version: test_response_new_pv,
         )
-        annotations, models = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
+        annotations = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         expected_annotations = [
             AnnotationSpec(
                 entity={},
@@ -230,11 +229,7 @@ class TestCADSRClient:
                 value_set=[new_pv],
             ),
         ]
-        expected_models = {
-            (x["model"], x["version"]) for x in TEST_MDB_CDE_SPEC["models"]
-        }
         assert_equal(annotations, expected_annotations)
-        assert_equal(models, expected_models)
 
     def test_check_cdes_against_mdb_raises_error_no_pvs(
         self,
@@ -248,9 +243,8 @@ class TestCADSRClient:
             lambda cde_id, cde_version: [],
         )
         with caplog.at_level(logging.ERROR):
-            result, models = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
+            result = client.check_cdes_against_mdb([TEST_MDB_CDE_SPEC])
         assert_equal(result, [])
-        assert_equal(models, set())
         assert "Error fetching PVs from caDSR for 6142527v1.00" in caplog.text
 
 

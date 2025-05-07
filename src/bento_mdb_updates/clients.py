@@ -149,7 +149,6 @@ class CADSRClient:
         """For MDB CDEs with PVs, check caDSR for new PVs."""
         result = []
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
-            affected_models = set()
             mdb_pvs = [pv["value"] for pv in cde_spec["permissibleValues"]]
             cadsr_pvs = self.fetch_cde_valueset(
                 cde_id=cde_spec["CDECode"],
@@ -190,10 +189,8 @@ class CADSRClient:
                 annotation_spec["value_set"].append(pv)
             if not update_annotation:
                 continue
-            for model_spec in cde_spec["models"]:
-                affected_models.add((model_spec["model"], model_spec["version"]))
             result.append(annotation_spec)
-        return result, affected_models
+        return result
 
 
 class NCItClient:
