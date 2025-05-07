@@ -8,17 +8,12 @@ from github import Github, GithubException
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 
-VALID_MDB_IDS = [
-    "fnl-mdb-dev",
-    "cloud-one-mdb-dev",
-    "og-mdb-dev",
-    "og-mdb-nightly",
-    "og-mdb-prod",
-]
-VALID_TIERS = {
-    "lower": ["dev", "dev2", "qa", "qa2"],
-    "upper": ["stage", "prod"],
-}
+from bento_mdb_updates.constants import (
+    DH_TERMS_GH_REPO,
+    GITHUB_TOKEN_SECRET,
+    VALID_MDB_IDS,
+    VALID_TIERS,
+)
 
 QUERY = (
     "MATCH (cde:term) WHERE toLower(cde.origin_name) CONTAINS 'cadsr' WITH cde "
@@ -93,9 +88,9 @@ def update_datahub_terms(
         raise ValueError(msg)
     branches_to_update = VALID_TIERS[tier]
 
-    github_token = Secret.load("GITHUB_TOKEN").get()  # type: ignore reportAttributeAccessIssue
+    github_token = Secret.load(GITHUB_TOKEN_SECRET).get()  # type: ignore reportAttributeAccessIssue
     gh = Github(github_token)
-    repo = gh.get_repo("CBIIT/crdc-datahub-terms")
+    repo = gh.get_repo(DH_TERMS_GH_REPO)
     file_path = "mdb_pvs.json"
 
     results = []

@@ -16,24 +16,14 @@ from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
 from pyliquibase import Pyliquibase
 
+from bento_mdb_updates.constants import VALID_LOG_LEVELS, VALID_MDB_IDS
+
+# liquibase constants
 DRIVER_PATH = "/app/drivers"
 DRIVER_JAR = "liquibase-neo4j-4.31.1-full.jar"
 LIQUIBASE_VERSION = "4.31.1"
 DRIVER_NAME = "liquibase.ext.neo4j.database.jdbc.Neo4jDriver"
-VALID_MDB_IDS = [
-    "fnl-mdb-dev",
-    "cloud-one-mdb-dev",
-    "og-mdb-dev",
-    "og-mdb-nightly",
-    "og-mdb-prod",
-]
-VALID_LOG_LEVELS = {
-    "debug": logging.DEBUG,
-    "info": logging.INFO,
-    "warning": logging.WARNING,
-    "severe": logging.CRITICAL,
-    "off": logging.NOTSET,
-}
+
 # configure jvm
 JVM_HEAP_MIN = "1g"
 JVM_HEAP_MAX = "3g"

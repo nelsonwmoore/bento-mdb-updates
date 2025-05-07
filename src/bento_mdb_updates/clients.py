@@ -145,7 +145,7 @@ class CADSRClient:
     def check_cdes_against_mdb(
         self,
         mdb_cdes: list[MDBCDESpec],
-    ) -> tuple[list[AnnotationSpec], set[tuple[str, str]]]:
+    ) -> list[AnnotationSpec]:
         """For MDB CDEs with PVs, check caDSR for new PVs."""
         result = []
         for cde_spec in tqdm(mdb_cdes, desc="Checking caDSR for new PVs..."):
@@ -314,11 +314,10 @@ class NCItClient:
     def check_synonyms_against_mdb(
         self,
         mdb_cdes: list[MDBCDESpec],
-    ) -> tuple[list[AnnotationSpec], set[tuple[str, str]]]:
+    ) -> list[AnnotationSpec]:
         """For MDB CDEs with PVs, check NCIt for new PV synonyms."""
         result = []
         for cde_spec in tqdm(mdb_cdes, desc="Checking NCIt for new synonyms..."):
-            affected_models = set()
             annotation_spec: AnnotationSpec = {
                 "entity": {},
                 "annotation": {
@@ -363,10 +362,8 @@ class NCItClient:
                 annotation_spec["value_set"].append(pv)
             if not annotation_spec["value_set"]:
                 continue
-            for model_spec in cde_spec["models"]:
-                affected_models.add((model_spec["model"], model_spec["version"]))
             result.append(annotation_spec)
-        return result, affected_models
+        return result
 
 
 class GitHubClient:  # TODO: replace with GitHub API client

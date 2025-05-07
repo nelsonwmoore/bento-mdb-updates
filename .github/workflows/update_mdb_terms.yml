@@ -2,7 +2,7 @@ name: Generate and Commit Term Update Changelog
 
 on:
   schedule:
-    - cron: "12 5 * * 1" # runs weekly on Saturday at 05:12 UTC/01:12 AM EDT
+    - cron: "12 5 * * 6" # runs weekly on Saturday at 05:12 UTC/01:12 AM EDT
   workflow_dispatch:
     inputs:
       author:
@@ -13,13 +13,95 @@ on:
         description: "Commit SHA for reference"
         required: false
         default: ""
+      dh_tier:
+        description: "Data Hub tier to update"
+        required: true
+        type: choice
+        options:
+          - "upper"
+          - "lower"
+          - "both"
+        default: "both"
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        type: boolean
+        default: true
 
 jobs:
-  update-mdb-terms:
+  setup:
     runs-on: ubuntu-latest
     outputs:
-      affected_models: ${{ steps.update-terms.outputs.affected_models }}
-      changelog_files: ${{ steps.update-terms.outputs.changelog_files }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          TIER="${{ github.event.inputs.dh_tier }}"
+          BASE_MATRIX='{
+            "include": [
+              {
+                "name": "nightly",
+                "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587",
+                "mdb_id": "og-mdb-nightly",
+                "dh_tier": "lower"
+              },
+              {
+                "name": "dev",
+                "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687",
+                "mdb_id": "og-mdb-dev",
+                "dh_tier": "upper"
+              }
+            ]
+          }'
+          if [ "$TIER" == "both" ]; then
+            MATRIX="$BASE_MATRIX"
+          elif [ "$TIER" == "lower" ]; then
+            MATRIX='{
+                "include": [
+                  {
+                    "name": "nightly",
+                    "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587",
+                    "mdb_id": "og-mdb-nightly",
+                    "dh_tier": "lower"
+                  }
+                ]
+              }'
+          elif [[ "$TIER" == "upper" ]]; then
+            # Use only dev instance
+            MATRIX='{
+              "include": [
+                {
+                  "name": "dev",
+                  "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687",
+                  "mdb_id": "og-mdb-dev",
+                  "dh_tier": "upper"
+                }
+              ]
+            }'
+          fi
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+
+  update-mdb-terms:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
+      fail-fast: false
+    outputs:
+      changelog_files_nightly: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'nightly' && steps.update-terms.outputs.changelog_files || '' }}
+      changelog_files_dev: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'dev' && steps.update-terms.outputs.changelog_files || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -43,46 +125,44 @@ jobs:
         id: update-terms
         run: |
           RESULT=$(prefect deployment run update-terms/update-terms \
-            --mdb_uri="${{ secrets.NEO4J_MDB_URI }}" \
-            --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
-            --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \
+            --mdb_uri="${{ matrix.mdb_uri }}" \
+            --mdb_user="neo4j" \
+            --mdb_id="${{ matrix.mdb_id }}" \
             --author="${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
-            --_commit="${{ github.event.inputs.commit_sha || github.sha }}")
+            --commit="${{ github.event.inputs.commit_sha || github.sha }}" \
+            --no_commit="${{ github.event.inputs.no_commit || 'true' }}")
 
-          AFFECTED_MODELS=$(echo $RESULT | jq -r '.affected_models')
           CHANGELOG_FILES=$(echo $RESULT | jq -r '.changelog_files')
 
-          echo "affected_models=$AFFECTED_MODELS" >> $GITHUB_OUTPUT
           echo "changelog_files=$CHANGELOG_FILES" >> $GITHUB_OUTPUT
+          echo "mdb_name=${{ matrix.name }}" >> $GITHUB_OUTPUT
+          echo "Changelog files for ${{ matrix.name }}: $CHANGELOG_FILES"
 
-          echo "Affected models: $AFFECTED_MODELS"
-          echo "Changelog files: $CHANGELOG_FILES"
 
-      - name: Commit Generated Changelog
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-
-          if [ -d "data/output/term_changelogs/" ]; then
-            git add data/output/term_changelogs/
-          fi
-          
-          if [ -d "data/output/mdb_cdes/" ]; then
-            git add data/output/mdb_cdes/
-          fi
-          
-          if [ -n "$(git status --porcelain)" ]; then
-            git commit -m "Update term changelogs and MDB CDEs"
-            git push
-          else
-            echo "No changes to commit"
-          fi
-
-  liquibase-update:
-    needs: [update-mdb-terms]
-    if: needs.update-mdb-terms.outputs.affected_models != '[]' && needs.update-mdb-terms.outputs.changelog_files != '[]'
-    uses: ./.github/workflows/liquibase_update.yml
+  update-mdb-nightly-and-dh-lower:
+    needs: [setup, update-mdb-terms]
+    if: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly != '' && needs.update-mdb-terms.outputs.changelog_files_nightly != '[]' }}
+    uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files }}
-      affected_models: ${{ needs.update-mdb-terms.outputs.affected_models }}
+      mdb_uri: jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587
+      mdb_user: neo4j
+      mdb_id: og-mdb-nightly
+      dh_tier: lower
+      changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly }}
+      dry_run: ${{ github.event.inputs.dry_run || 'false' }}
+      no_commit: ${{ github.event.inputs.no_commit || 'true' }}
+
+  update-mdb-dev-and-dh-upper:
+    needs: [setup, update-mdb-terms]
+    if: ${{ needs.update-mdb-terms.outputs.changelog_files_dev != '' && needs.update-mdb-terms.outputs.changelog_files_dev != '[]' }}
+    uses: ./.github/workflows/update_mdb_and_dh.yml
+    secrets: inherit
+    with:
+      mdb_uri: jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687
+      mdb_user: neo4j
+      mdb_id: og-mdb-dev
+      dh_tier: upper
+      changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_dev }}
+      dry_run: ${{ github.event.inputs.dry_run || 'false' }}
+      no_commit: ${{ github.event.inputs.no_commit || 'true' }}
