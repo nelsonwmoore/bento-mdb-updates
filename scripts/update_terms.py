@@ -221,10 +221,7 @@ def update_terms(  # noqa: PLR0913
     "--output-file",
     required=False,
     type=str,
-    help=(
-        "Output file path for MDB "
-        "CDE JSON (defaults to data/output/mdb_cdes/mdb_cdes_<date>.json)",
-    ),
+    help="Output file path for MDB CDE JSON",
 )
 @click.option(
     "-c",
@@ -232,6 +229,13 @@ def update_terms(  # noqa: PLR0913
     required=False,
     type=str,
     help="Commit string",
+)
+@click.option(
+    "--no_commit",
+    required=False,
+    type=str,
+    help="Commit string",
+    default=False,
 )
 def main(  # noqa: PLR0913
     mdb_uri: str,
