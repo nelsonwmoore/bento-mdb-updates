@@ -106,7 +106,7 @@ jobs:
           --arg mdb_id "${{ matrix.mdb_id }}" \
           --arg author "${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
           --arg commit "${{ github.event.inputs.commit_sha || github.sha }}" \
-          --arg no_commit "${{ github.event.inputs.no_commit || 'true' }}" \
+          --argjson no_commit "${{ github.event.inputs.no_commit || 'true' }}" \
           '{
             "mdb_uri": $mdb_uri,
             "mdb_user": $mdb_user,
