@@ -49,48 +49,21 @@ jobs:
           TIER="${{ github.event.inputs.dh_tier }}"
           BASE_MATRIX='{
             "include": [
-              {
-                "name": "nightly",
-                "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587",
-                "mdb_id": "og-mdb-nightly",
-                "dh_tier": "lower"
-              },
-              {
-                "name": "dev",
-                "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687",
-                "mdb_id": "og-mdb-dev",
-                "dh_tier": "upper"
-              }
+              { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" },
+              { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" }
             ]
           }'
-          if [ "$TIER" == "both" ]; then
+          if [ "$TIER" = "lower" ]; then
+            MATRIX='{ "include":[ { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" } ] }'
+          elif [ "$TIER" = "upper" ]; then
+            MATRIX='{ "include":[ { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" } ] }'
+          else
             MATRIX="$BASE_MATRIX"
-          elif [ "$TIER" == "lower" ]; then
-            MATRIX='{
-                "include": [
-                  {
-                    "name": "nightly",
-                    "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587",
-                    "mdb_id": "og-mdb-nightly",
-                    "dh_tier": "lower"
-                  }
-                ]
-              }'
-          elif [[ "$TIER" == "upper" ]]; then
-            # Use only dev instance
-            MATRIX='{
-              "include": [
-                {
-                  "name": "dev",
-                  "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687",
-                  "mdb_id": "og-mdb-dev",
-                  "dh_tier": "upper"
-                }
-              ]
-            }'
           fi
 
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          MATRIX=$(echo "$MATRIX" | jq -c .)
+
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
 
   update-mdb-terms:
