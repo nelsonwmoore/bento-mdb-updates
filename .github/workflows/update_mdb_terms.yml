@@ -97,13 +97,23 @@ jobs:
       - name: Update terms
         id: update-terms
         run: |
-          RESULT=$(prefect deployment run update-terms/update-terms \
-            --mdb_uri="${{ matrix.mdb_uri }}" \
-            --mdb_user="neo4j" \
-            --mdb_id="${{ matrix.mdb_id }}" \
-            --author="${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
-            --commit="${{ github.event.inputs.commit_sha || github.sha }}" \
-            --no_commit="${{ github.event.inputs.no_commit || 'true' }}")
+          PARAMS=$(jq -n \
+          --arg mdb_uri "${{ matrix.mdb_uri }}" \
+          --arg mdb_user "neo4j" \
+          --arg mdb_id "${{ matrix.mdb_id }}" \
+          --arg author "${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
+          --arg commit "${{ github.event.inputs.commit_sha || github.sha }}" \
+          --arg no_commit "${{ github.event.inputs.no_commit || 'true' }}" \
+          '{
+            "mdb_uri": $mdb_uri,
+            "mdb_user": $mdb_user,
+            "mdb_id": $mdb_id,
+            "author": $author,
+            "commit": $commit,
+            "no_commit": $no_commit
+          }')
+
+          RESULT=$(prefect deployment run update-terms/update-terms --params "$PARAMS")
 
           CHANGELOG_FILES=$(echo $RESULT | jq -r '.changelog_files')
 
@@ -125,6 +135,7 @@ jobs:
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly }}
       dry_run: ${{ github.event.inputs.dry_run || 'false' }}
       no_commit: ${{ github.event.inputs.no_commit || 'true' }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
 
   update-mdb-dev-and-dh-upper:
     needs: [setup, update-mdb-terms]
@@ -139,3 +150,4 @@ jobs:
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_dev }}
       dry_run: ${{ github.event.inputs.dry_run || 'false' }}
       no_commit: ${{ github.event.inputs.no_commit || 'true' }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
