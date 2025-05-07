@@ -330,7 +330,7 @@ class NCItClient:
             }
             for pv in cde_spec["permissibleValues"]:
                 mdb_synonyms = pv.get("synonyms", [])
-                print(f"{mdb_synonyms=}")
+                logger.debug(mdb_synonyms)
                 mdb_synonyms_frozen = {frozenset(syn.items()) for syn in mdb_synonyms}
                 pv_ncit_codes = [
                     syn.get("origin_id")
@@ -344,7 +344,7 @@ class NCItClient:
                         logger.info("No NCIm mapping for %s", code)
                         continue
                     ncim_synonyms = self.ncim_mapping[code]
-                    print(f"{ncim_synonyms=}")
+                    logger.debug(ncim_synonyms)
                     for ncim_syn in ncim_synonyms:
                         ncim_syn_frozen = frozenset(ncim_syn.items())
                         if ncim_syn_frozen in mdb_synonyms_frozen:

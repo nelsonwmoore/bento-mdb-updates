@@ -103,5 +103,8 @@ jobs:
               "no_commit": $no_commit
             }')
 
-            prefect deployment run update-mdb-and-dh/update-mdb-and-dh --params "$PARAMS"
+            prefect deployment run update-mdb-and-dh/update-mdb-and-dh \
+              --params "$PARAMS" \
+              --watch \
+              --watch-interval 30
           done
