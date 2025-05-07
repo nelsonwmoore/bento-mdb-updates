@@ -82,3 +82,14 @@ deployments:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: update-terms
+  version:
+  tags: []
+  concurrency_limit:
+  description: Check for term source updates and update MDB and DH
+  entrypoint: scripts/update_terms.py:update_terms
+  parameters: {}
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
