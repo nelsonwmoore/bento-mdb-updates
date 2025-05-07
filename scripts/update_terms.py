@@ -148,7 +148,7 @@ def commit_new_files(files: list[Path]) -> list:
     return results
 
 
-@flow(name="update-terms")
+@flow(name="update-terms", log_prints=True)
 def update_terms(  # noqa: PLR0913
     mdb_uri: str,
     mdb_user: str,
@@ -187,7 +187,7 @@ def update_terms(  # noqa: PLR0913
         commit_new_files([output_file, changelog_file])
 
     # Print changlog file as JSON for GitHub Actions
-    print(json.dumps([str(changelog_file)]))  # noqa: T201
+    print(f"RESULT_JSON:{json.dumps([str(changelog_file)])}")  # noqa: T201
 
 
 @click.command()

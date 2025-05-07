@@ -49,14 +49,14 @@ jobs:
           TIER="${{ github.event.inputs.dh_tier }}"
           BASE_MATRIX='{
             "include": [
-              { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" },
-              { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" }
+              { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" },
+              { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" }
             ]
           }'
           if [ "$TIER" = "lower" ]; then
-            MATRIX='{ "include":[ { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" } ] }'
+            MATRIX='{ "include":[ { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" } ] }'
           elif [ "$TIER" = "upper" ]; then
-            MATRIX='{ "include":[ { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" } ] }'
+            MATRIX='{ "include":[ { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" } ] }'
           else
             MATRIX="$BASE_MATRIX"
           fi
@@ -117,17 +117,15 @@ jobs:
           }')
           echo "PARAMS=$PARAMS"
 
-          RESULT=$(prefect deployment run update-terms/update-terms --params "$PARAMS" 2>&1) || true
-          echo "PREFECT OUTPUT:"
-          echo "$RESULT"
+          prefect deployment run update-terms/update-terms \
+            --params "$PARAMS" \
+            --watch \
+            --watch-interval 30 2>&1) | tee run.log
 
-          CHANGELOG_FILES=$(echo $RESULT | jq -r '.changelog_files // empty')
-          if [ -z "$CHANGELOG_FILES" ]; then
-            echo "::error:: no .changelog_files in Prefect output, aborting"
-            exit 1
-          fi
+          RESULT_JSON=$(grep '^RESULT_JSON:' run.log | head -n1 | sed 's/^RESULT_JSON://')
+          echo "RESULT_JSON=$RESULT_JSON"
 
-          echo "changelog_files=$CHANGELOG_FILES" >> $GITHUB_OUTPUT
+          echo "changelog_files=$RESULT_JSON" >> $GITHUB_OUTPUT
           echo "mdb_name=${{ matrix.name }}" >> $GITHUB_OUTPUT
           echo "Changelog files for ${{ matrix.name }}: $CHANGELOG_FILES"
 
@@ -138,7 +136,7 @@ jobs:
     uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8587
+      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587
       mdb_user: neo4j
       mdb_id: og-mdb-nightly
       dh_tier: lower
@@ -153,7 +151,7 @@ jobs:
     uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt+s://mdb.ctos-data-team.org:8687
+      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687
       mdb_user: neo4j
       mdb_id: og-mdb-dev
       dh_tier: upper
