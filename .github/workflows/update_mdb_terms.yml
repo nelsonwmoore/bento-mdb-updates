@@ -100,7 +100,8 @@ jobs:
           PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
           PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
         run: |
-          set -euo pipefail
+          set -xeuo pipefail
+          trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
 
           PARAMS=$(jq -n \
           --arg mdb_uri "${{ matrix.mdb_uri }}" \
@@ -125,6 +126,7 @@ jobs:
               --watch \
               --watch-interval 30 2>&1 | tee watch.log
           )
+          echo "watch_out=$watch_out"
 
           RUN_ID=$(
             grep -oP "(?<=Completed submission of flow run ')[^']+" watch.log
@@ -136,20 +138,20 @@ jobs:
           RESULT_JSON=$(
             grep -a "RESULT_JSON:" run.log \
               | tail -n1 \
-              | sed 's/.*RESULT_JSON://; s/^[[:space:]]*//; s/[[:space:]]*$//'
+              | sed 's/.*RESULT_JSON://; s/^[[:space:]]*//; s/[[:space:]]*$//' \
+              || true
           )
           echo "Found RESULT_JSON: $RESULT_JSON"
 
           if [ -z "$RESULT_JSON" ]; then
-            echo "Warning: RESULT_JSON not found. Falling back…"
+            echo "No direct match; falling back…"
             CHANGELOG_FILE=$(
               grep -a -o '/[^ ]*/term_changelogs/[^ ]*_term_updates\.xml' run.log \
-                | tail -n1
+                | tail -n1 \
+                || true
             )
-            if [ -n "$CHANGELOG_FILE" ]; then
-              RESULT_JSON="[\"$CHANGELOG_FILE\"]"
-              echo "Found fallback changelog file: $RESULT_JSON"
-            fi
+            [ -n "$CHANGELOG_FILE" ] && RESULT_JSON="[\"$CHANGELOG_FILE\"]"
+            echo "Fallback RESULT_JSON: $RESULT_JSON"
           fi
 
           # Set output for GitHub Actions
