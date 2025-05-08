@@ -134,7 +134,7 @@ jobs:
           )
           echo "Scheduled and completed run: $RUN_ID"
           
-          LOG_FILE = "${RUN_ID}_run.log"
+          LOG_FILE="${RUN_ID}_run.log"
           echo "Log file: $LOG_FILE"
 
           prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
