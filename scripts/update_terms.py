@@ -200,7 +200,7 @@ def update_terms(  # noqa: PLR0913
     logger = get_run_logger()
     today = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
     if output_file is None:
-        output_file = Path(f"data/output/mdb_cdes/mdb_cdes_{today}.json")
+        output_file = Path(f"data/output/mdb_cdes/mdb_cdes_{mdb_id}_{today}.json")
     else:
         output_file = Path(output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -211,7 +211,7 @@ def update_terms(  # noqa: PLR0913
     # convert annotation updates to liquibase changelog
     changelog = convert_model_cdes_to_changelog(update_cde_spec, author, commit)
     output_dir = Path().cwd() / "data/output/term_changelogs"
-    changelog_file = output_dir / f"{today}_term_updates.xml"
+    changelog_file = output_dir / f"{mdb_id}_{today}_term_updates.xml"
     changelog_file.parent.mkdir(parents=True, exist_ok=True)
     changelog.save_to_file(str(changelog_file), encoding="UTF-8")
 

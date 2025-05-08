@@ -141,8 +141,8 @@ jobs:
       mdb_id: og-mdb-nightly
       dh_tier: lower
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly }}
-      dry_run: ${{ github.event.inputs.dry_run}}
-      no_commit: ${{ github.event.inputs.no_commit }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
 
   update-mdb-dev-and-dh-upper:
@@ -156,6 +156,6 @@ jobs:
       mdb_id: og-mdb-dev
       dh_tier: upper
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_dev }}
-      dry_run: ${{ github.event.inputs.dry_run }}
-      no_commit: ${{ github.event.inputs.no_commit}}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
