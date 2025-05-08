@@ -121,7 +121,7 @@ jobs:
           RUN_ID=$(
             prefect deployment run update-terms/update-terms \
               --params "$PARAMS" \
-              --json 
+              --json \
             | jq -r '.id'
           )
 
