@@ -129,7 +129,8 @@ jobs:
           echo "watch_out=$watch_out"
 
           RUN_ID=$(
-            grep -oP "(?<=Completed submission of flow run ')[^']+" watch.log
+            grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch.log \
+            | head -n1
           )
           echo "Scheduled and completed run: $RUN_ID"
 
