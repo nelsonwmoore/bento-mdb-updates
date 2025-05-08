@@ -135,32 +135,28 @@ jobs:
           echo "Scheduled and completed run: $RUN_ID"
 
           prefect flow-run logs "$RUN_ID" > run.log
+          
+          RAW_JSON=$(grep -a -m1 "RESULT_JSON:" run.log \
+            | grep -oP '\[.*\]' \
+            || echo '[]')
+          echo "Raw JSON array from logs: $RAW_JSON"
 
-          RESULT_JSON=$(
-            grep -a -m1 "RESULT_JSON:" run.log \
-              | grep -oP '\[.*\]' \
-              | xargs \
-              || true
-          )
-          echo "Raw RESULT_JSON: $RESULT_JSON"
-
-          if [[ "$RESULT_JSON" =~ \[\".*/data/(output/term_changelogs/.*)\"\] ]]; then
-            REL_PATH="${BASH_REMATCH[1]}"
-            RESULT_JSON="[\"data/${REL_PATH}\"]"
+          FIRST_PATH=$(echo "$RAW_JSON" | jq -r '.[0] // empty')
+          if [ -n "$FIRST_PATH" ]; then
+            CLEAN_PATH=$(echo "$FIRST_PATH" \
+              | sed -E 's|.*/data/|data/|')
+            RESULT_JSON=$(jq -nc --arg p "$CLEAN_PATH" '[ $p ]')
             echo "Normalized RESULT_JSON: $RESULT_JSON"
           fi
 
-          if [ -z "$RESULT_JSON" ]; then
-            echo "Fallback: direct JSON not found, grepping for filename…"
-            CHANGELOG_FILE=$(
-              grep -a -o '/[^ ]*/output/term_changelogs/[^ ]*_term_updates\.xml' run.log \
-                | tail -n1 \
-                || true
-            )
-            if [ -n "$CHANGELOG_FILE" ]; then
-              # strip leading slash + everything up to data/
-              STRIPPED=${CHANGELOG_FILE#*/data/}
-              RESULT_JSON="[\"data/${STRIPPED}\"]"
+          if [ -z "${RESULT_JSON//\[\]/}" ]; then
+            echo "Fallback: no direct JSON, grepping for filename…"
+            FILE_PATH=$(grep -a -o '/[^ ]*/output/term_changelogs/[^ ]*_term_updates\.xml' run.log \
+              | tail -n1 \
+              || true)
+            if [ -n "$FILE_PATH" ]; then
+              STRIPPED=${FILE_PATH#*/data/}               # e.g. output/term_changelogs/xxx.xml
+              RESULT_JSON=$(jq -nc --arg p "data/$STRIPPED" '[ $p ]')
               echo "Fallback RESULT_JSON: $RESULT_JSON"
             fi
           fi
