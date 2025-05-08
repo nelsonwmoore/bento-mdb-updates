@@ -133,8 +133,11 @@ jobs:
             | head -n1
           )
           echo "Scheduled and completed run: $RUN_ID"
+          
+          LOG_FILE = "${RUN_ID}_run.log"
+          echo "Log file: $LOG_FILE"
 
-          prefect flow-run logs "$RUN_ID" > run.log
+          prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
           
           RAW_JSON=$(grep -a -m1 "RESULT_JSON:" run.log \
             | grep -oP '\[.*\]' \
