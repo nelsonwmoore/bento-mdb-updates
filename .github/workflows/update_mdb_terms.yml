@@ -121,12 +121,11 @@ jobs:
           RUN_ID=$(
             prefect deployment run update-terms/update-terms \
               --params "$PARAMS" \
-              --json \
             | jq -r '.id'
           )
 
           # stream ALL logs until the run completes
-          prefect flow-run logs --id "$RUN_ID" 2>&1 | tee run.log
+          prefect flow-run logs "$RUN_ID" 2>&1 | tee run.log
 
           RESULT_JSON=$(
             grep -a "RESULT_JSON:" run.log \
