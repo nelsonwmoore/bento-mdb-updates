@@ -122,12 +122,28 @@ jobs:
             --watch \
             --watch-interval 30 2>&1 | tee run.log
 
-          RESULT_JSON=$(grep '^RESULT_JSON:' run.log | head -n1 | sed 's/^RESULT_JSON://')
-          echo "RESULT_JSON=$RESULT_JSON"
+          RESULT_JSON=$(grep -a "RESULT_JSON:" run.log | tail -n1 | sed 's/.*RESULT_JSON://')
+          RESULT_JSON=$(echo "$RESULT_JSON" | xargs)
+          echo "Found RESULT_JSON: $RESULT_JSON"
 
+          if [ -z "$RESULT_JSON" ]; then
+            echo "Warning: RESULT_JSON not found directly. Trying alternative approach..."
+            CHANGELOG_FILE=$(grep -a -o '/[^ ]*/term_changelogs/[^ ]*_term_updates\.xml' run.log | tail -n1)
+            if [ -n "$CHANGELOG_FILE" ]; then
+              RESULT_JSON="[\"$CHANGELOG_FILE\"]"
+              echo "Found changelog file from logs: $RESULT_JSON"
+            fi
+          fi
+          
+          echo "DEBUG: First 10 lines of log:"
+          head -n 10 run.log
+          echo "DEBUG: Last 10 lines of log:"
+          tail -n 10 run.log
+
+          # Set output for GitHub Actions
           echo "changelog_files=$RESULT_JSON" >> $GITHUB_OUTPUT
           echo "mdb_name=${{ matrix.name }}" >> $GITHUB_OUTPUT
-          echo "Changelog files for ${{ matrix.name }}: $CHANGELOG_FILES"
+          echo "Changelog files for ${{ matrix.name }}: $RESULT_JSON"
 
 
   update-mdb-nightly-and-dh-lower:

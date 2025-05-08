@@ -30,6 +30,21 @@ if TYPE_CHECKING:
     from bento_mdb_updates.datatypes import MDBCDESpec, ModelCDESpec
 
 
+def make_changelog_output_more_visible(changelog_file):
+    """
+    Make the changelog output more visible in logs.
+
+    Print multiple times with clear markers.
+    """
+    result_json = json.dumps([str(changelog_file)])
+    print("\n" + "*" * 80)  # noqa: T201
+    print("RESULT_JSON_BEGIN")  # noqa: T201
+    print(f"RESULT_JSON:{result_json}")  # noqa: T201
+    print("RESULT_JSON_END")  # noqa: T201
+    print("*" * 80 + "\n")  # noqa: T201
+    print(f"RESULT_JSON:{result_json}")  # noqa: T201
+
+
 @task
 def get_current_mdb_cdes(
     mdb_uri: str,
@@ -224,7 +239,7 @@ def update_terms(  # noqa: PLR0913
         commit_new_files([output_file, changelog_file])
 
     # Print changlog file as JSON for GitHub Actions
-    print(f"RESULT_JSON:{json.dumps([str(changelog_file)])}")  # noqa: T201
+    make_changelog_output_more_visible(changelog_file)
 
 
 @click.command()
