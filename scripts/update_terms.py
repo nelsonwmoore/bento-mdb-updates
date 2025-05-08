@@ -101,39 +101,76 @@ def commit_new_files(files: list[Path]) -> list:
     results = []
     for file_path in files:
         try:
-            path_str = str(file_path)
+            if file_path.is_absolute():
+                repo_path = str(file_path.relative_to(Path.cwd()))
+            else:
+                repo_path = str(file_path)
+            repo_path = repo_path.lstrip("/")
+            logger.info("Convering %s to %s", file_path, repo_path)
             with file_path.open("r", encoding="utf-8") as f:
                 file_content = f.read()
+
+            file_exists = False
+            file_sha = None
             try:
-                file_contents = repo.get_contents(path_str)
-                sha = (
-                    file_contents[0].sha
-                    if isinstance(file_contents, list)
-                    else file_contents.sha
-                )
-                logger.info("File %s already exists", path_str)
-                commit_msg = f"Update {file_path.name} (GitHub Actions)"
-                result = repo.update_file(
-                    path=path_str,
-                    message=commit_msg,
-                    content=file_content,
-                    sha=sha,
-                )
-                results.append(
-                    f"Updated {path_str} (commit: {result['commit'].sha[:7]})",
-                )
-            except GithubException:
-                logger.info("File %s does not exist", path_str)
-                commit_msg = f"Add {file_path.name} (GitHub Actions)"
-                result = repo.create_file(
-                    path=path_str,
-                    message=commit_msg,
-                    content=file_content,
-                )
-                results.append(
-                    f"Created {path_str} (commit: {result['commit'].sha[:7]})",
-                )
-        except Exception as e:  # noqa: PERF203
+                dir_path = "/".join(repo_path.split("/")[:-1])
+                filename = repo_path.split("/")[-1]
+                if not dir_path:
+                    dir_path = ""
+                logger.info("Checking directory '%s' for file '%s'", dir_path, filename)
+                dir_contents = repo.get_contents(dir_path)
+                if isinstance(dir_contents, list):
+                    for item in dir_contents:
+                        if item.path == repo_path:
+                            file_exists = True
+                            file_sha = item.sha
+                            logger.info(
+                                "Found file %s with SHA: %s",
+                                repo_path,
+                                file_sha,
+                            )
+                elif dir_contents.path == repo_path:
+                    file_exists = True
+                    file_sha = dir_contents.sha
+            except GithubException as e:
+                if e.status == 404:
+                    logger.info("Directory %s does not exist", dir_path)
+                    file_exists = False
+                else:
+                    raise
+            try:
+                if file_exists and file_sha is not None:
+                    logger.info("Updating existing file %s", repo_path)
+                    commit_msg = f"Update {repo_path} (GitHub Actions)"
+                    result = repo.update_file(
+                        path=repo_path,
+                        message=commit_msg,
+                        content=file_content,
+                        sha=file_sha,
+                    )
+                    results.append(
+                        f"Updated {repo_path} (commit: {result['commit'].sha[:7]})",
+                    )
+                else:
+                    logger.info("Creating new file %s", repo_path)
+                    commit_msg = f"Add {repo_path} (GitHub Actions)"
+                    result = repo.create_file(
+                        path=repo_path,
+                        message=commit_msg,
+                        content=file_content,
+                    )
+                    results.append(
+                        f"Created {repo_path} (commit: {result['commit'].sha[:7]})",
+                    )
+            except GithubException as e:
+                if e.status == 422 and "too large" in str(e):
+                    logger.exception("File %s is too large for GitHub API", repo_path)
+                    results.append(
+                        f"Error: File {repo_path} is too large for GitHub API",
+                    )
+                else:
+                    raise
+        except Exception as e:
             error_msg = f"Error updating {file_path}: {e}"
             results.append(error_msg)
             logger.exception(error_msg)

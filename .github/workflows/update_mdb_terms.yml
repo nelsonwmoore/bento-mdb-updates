@@ -36,7 +36,7 @@ on:
         description: "Don't commit changes to GitHub."
         required: false
         type: boolean
-        default: true
+        default: false
 
 jobs:
   setup:
@@ -106,7 +106,7 @@ jobs:
           --arg mdb_id "${{ matrix.mdb_id }}" \
           --arg author "${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
           --arg commit "${{ github.event.inputs.commit_sha || github.sha }}" \
-          --argjson no_commit "${{ github.event.inputs.no_commit || 'true' }}" \
+          --argjson no_commit "${{ github.event.inputs.no_commit || false }}" \
           '{
             "mdb_uri": $mdb_uri,
             "mdb_user": $mdb_user,
@@ -141,8 +141,8 @@ jobs:
       mdb_id: og-mdb-nightly
       dh_tier: lower
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly }}
-      dry_run: ${{ fromJSON(github.event.inputs.dry_run) }}
-      no_commit: ${{ fromJSON(github.event.inputs.no_commit) }}
+      dry_run: ${{ github.event.inputs.dry_run}}
+      no_commit: ${{ github.event.inputs.no_commit }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
 
   update-mdb-dev-and-dh-upper:
@@ -156,6 +156,6 @@ jobs:
       mdb_id: og-mdb-dev
       dh_tier: upper
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_dev }}
-      dry_run: ${{ fromJSON(github.event.inputs.dry_run) }}
-      no_commit: ${{ fromJSON(github.event.inputs.no_commit) }}
+      dry_run: ${{ github.event.inputs.dry_run }}
+      no_commit: ${{ github.event.inputs.no_commit}}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
