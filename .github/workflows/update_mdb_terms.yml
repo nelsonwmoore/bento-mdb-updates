@@ -125,7 +125,7 @@ jobs:
           )
 
           RUN_ID=$(
-            grep -oP "(?<=Created flow run ')[^']+" watch.log
+            grep -oP "(?<=Completed submission of flow run ')[^']+" watch.log
           )
           echo "Scheduled and completed run: $RUN_ID"
 
