@@ -137,22 +137,32 @@ jobs:
           prefect flow-run logs "$RUN_ID" > run.log
 
           RESULT_JSON=$(
-            grep -a "RESULT_JSON:" run.log \
-              | tail -n1 \
-              | sed 's/.*RESULT_JSON://; s/^[[:space:]]*//; s/[[:space:]]*$//' \
+            grep -a -m1 "RESULT_JSON:" run.log \
+              | grep -oP '\[.*\]' \
+              | xargs \
               || true
           )
-          echo "Found RESULT_JSON: $RESULT_JSON"
+          echo "Raw RESULT_JSON: $RESULT_JSON"
+
+          if [[ "$RESULT_JSON" =~ \[\".*/data/(output/term_changelogs/.*)\"\] ]]; then
+            REL_PATH="${BASH_REMATCH[1]}"
+            RESULT_JSON="[\"data/${REL_PATH}\"]"
+            echo "Normalized RESULT_JSON: $RESULT_JSON"
+          fi
 
           if [ -z "$RESULT_JSON" ]; then
-            echo "No direct match; falling back…"
+            echo "Fallback: direct JSON not found, grepping for filename…"
             CHANGELOG_FILE=$(
-              grep -a -o '/[^ ]*/term_changelogs/[^ ]*_term_updates\.xml' run.log \
+              grep -a -o '/[^ ]*/output/term_changelogs/[^ ]*_term_updates\.xml' run.log \
                 | tail -n1 \
                 || true
             )
-            [ -n "$CHANGELOG_FILE" ] && RESULT_JSON="[\"$CHANGELOG_FILE\"]"
-            echo "Fallback RESULT_JSON: $RESULT_JSON"
+            if [ -n "$CHANGELOG_FILE" ]; then
+              # strip leading slash + everything up to data/
+              STRIPPED=${CHANGELOG_FILE#*/data/}
+              RESULT_JSON="[\"data/${STRIPPED}\"]"
+              echo "Fallback RESULT_JSON: $RESULT_JSON"
+            fi
           fi
 
           # Set output for GitHub Actions
