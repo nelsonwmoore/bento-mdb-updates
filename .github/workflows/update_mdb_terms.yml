@@ -117,32 +117,36 @@ jobs:
           }')
           echo "PARAMS=$PARAMS"
 
-          # schedule flow run and grab it's ID
-          RUN_ID=$(
+          watch_out=$(
             prefect deployment run update-terms/update-terms \
               --params "$PARAMS" \
-            | jq -r '.id'
+              --watch \
+              --watch-interval 30 2>&1 | tee watch.log
           )
 
-          # stream ALL logs until the run completes
-          prefect flow-run logs "$RUN_ID" 2>&1 | tee run.log
+          RUN_ID=$(
+            grep -oP "(?<=Created flow run ')[^']+" watch.log
+          )
+          echo "Scheduled and completed run: $RUN_ID"
+
+          prefect flow-run logs "$RUN_ID" > run.log
 
           RESULT_JSON=$(
             grep -a "RESULT_JSON:" run.log \
-            | tail -n1 \
-            | sed 's/.*RESULT_JSON://; s/^[[:space:]]*//; s/[[:space:]]*$//'
+              | tail -n1 \
+              | sed 's/.*RESULT_JSON://; s/^[[:space:]]*//; s/[[:space:]]*$//'
           )
           echo "Found RESULT_JSON: $RESULT_JSON"
 
           if [ -z "$RESULT_JSON" ]; then
-            echo "Warning: RESULT_JSON not found directly. Trying alternative approach..."
+            echo "Warning: RESULT_JSON not found. Falling back…"
             CHANGELOG_FILE=$(
               grep -a -o '/[^ ]*/term_changelogs/[^ ]*_term_updates\.xml' run.log \
-              | tail -n1
+                | tail -n1
             )
             if [ -n "$CHANGELOG_FILE" ]; then
               RESULT_JSON="[\"$CHANGELOG_FILE\"]"
-              echo "Found changelog file from logs: $RESULT_JSON"
+              echo "Found fallback changelog file: $RESULT_JSON"
             fi
           fi
 
