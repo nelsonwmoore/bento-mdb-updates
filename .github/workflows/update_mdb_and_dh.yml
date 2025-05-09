@@ -37,7 +37,7 @@ on:
         description: "Don't commit changes to GitHub."
         required: false
         type: boolean
-        default: true
+        default: false
     secrets:
       PREFECT_API_KEY:
         required: true
@@ -94,8 +94,8 @@ jobs:
             --arg id "${{ inputs.mdb_id }}" \
             --arg log_level "${{ inputs.log_level || 'info' }}" \
             --arg tier "${{ inputs.dh_tier }}" \
-            --arg dry_run "${{ inputs.dry_run || 'false' }}" \
-            --arg no_commit "${{ inputs.no_commit || 'true' }}" \
+            --argjson dry_run "${{ inputs.dry_run || false }}" \
+            --argjson no_commit "${{ inputs.no_commit || true }}" \
             '{
               "mdb_uri": $uri,
               "mdb_user": $user,
