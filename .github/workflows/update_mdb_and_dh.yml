@@ -93,6 +93,7 @@ jobs:
             --arg file "$file" \
             --arg id "${{ inputs.mdb_id }}" \
             --arg log_level "${{ inputs.log_level || 'info' }}" \
+            --arg tier "${{ inputs.dh_tier }}" \
             --arg dry_run "${{ inputs.dry_run || 'false' }}" \
             --arg no_commit "${{ inputs.no_commit || 'true' }}" \
             '{
@@ -101,6 +102,7 @@ jobs:
               "changelog_file": $file,
               "mdb_id": $id,
               "log_level": $log_level,
+              "tier": $tier,
               "dry_run": $dry_run,
               "no_commit": $no_commit
             }')
