@@ -138,9 +138,18 @@ jobs:
           echo "Log file: $LOG_FILE"
 
           prefect flow-run logs "$RUN_ID" > "$LOG_FILE"
+
+          echo "First 10 lines of log file:"
+          head -n 10 "$LOG_FILE" || echo "Failed to read log file"
           
-          RAW_JSON=$(grep -a -m1 "RESULT_JSON:" run.log \
-            | grep -oP '\[.*\]' \
+          echo "Checking for RESULT_JSON in logs:"
+          grep -a "RESULT_JSON" "$LOG_FILE" || echo "No RESULT_JSON found in logs"
+
+          RESULT_JSON='[]'
+          
+          RAW_JSON=$(grep -a -m1 "RESULT_JSON:" "$LOG_FILE" \
+            | grep -oP 'RESULT_JSON:\s*\[.*\]' \
+            | sed 's/RESULT_JSON:\s*//' \
             || echo '[]')
           echo "Raw JSON array from logs: $RAW_JSON"
 
@@ -154,7 +163,7 @@ jobs:
 
           if [ -z "${RESULT_JSON//\[\]/}" ]; then
             echo "Fallback: no direct JSON, grepping for filename…"
-            FILE_PATH=$(grep -a -o '/[^ ]*/output/term_changelogs/[^ ]*_term_updates\.xml' run.log \
+            FILE_PATH=$(grep -a -o '/[^ ]*/output/term_changelogs/[^ ]*_term_updates\.xml' "$LOG_FILE" \
               | tail -n1 \
               || true)
             if [ -n "$FILE_PATH" ]; then
