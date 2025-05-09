@@ -52,6 +52,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with: # latest version of branch to get files committed in prev job
+          ref: ${{ github.ref }}
 
       - name: Install Python
         uses: actions/setup-python@v4
