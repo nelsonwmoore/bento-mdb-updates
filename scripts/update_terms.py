@@ -17,7 +17,7 @@ from prefect.blocks.system import Secret
 from bento_mdb_updates.cde_cypher import convert_model_cdes_to_changelog
 from bento_mdb_updates.clients import CADSRClient, NCItClient
 from bento_mdb_updates.constants import (
-    GITHUB_TOKEN_SECRET_NWM,
+    GITHUB_TOKEN_SECRET,
     MDB_UPDATES_GH_REPO,
     VALID_MDB_IDS,
 )
@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from bento_mdb_updates.datatypes import MDBCDESpec, ModelCDESpec
 
 
-def make_changelog_output_more_visible(changelog_file):
+def make_changelog_output_more_visible(changelog_file: Path) -> None:
     """
     Make the changelog output more visible in logs.
 
@@ -109,7 +109,7 @@ def update_mdb_cdes_from_term_sources(
 def commit_new_files(files: list[Path]) -> list:
     """Commit new files to GitHub."""
     logger = get_run_logger()
-    github_token = Secret.load(GITHUB_TOKEN_SECRET_NWM).get()  # type: ignore reportAttributeAccessIssue
+    github_token = Secret.load(GITHUB_TOKEN_SECRET).get()  # type: ignore reportAttributeAccessIssue
     gh = Github(github_token)
     repo = gh.get_repo(MDB_UPDATES_GH_REPO)
 
@@ -121,7 +121,7 @@ def commit_new_files(files: list[Path]) -> list:
             else:
                 repo_path = str(file_path)
             repo_path = repo_path.lstrip("/")
-            logger.info("Convering %s to %s", file_path, repo_path)
+            logger.info("Converting %s to %s", file_path, repo_path)
             with file_path.open("r", encoding="utf-8") as f:
                 file_content = f.read()
 

@@ -72,12 +72,15 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.setup.outputs.matrix) }}
       fail-fast: false
+      max-parallel: 1
     outputs:
       changelog_files_nightly: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'nightly' && steps.update-terms.outputs.changelog_files || '' }}
       changelog_files_dev: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'dev' && steps.update-terms.outputs.changelog_files || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v4

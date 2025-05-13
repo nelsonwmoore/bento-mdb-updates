@@ -94,47 +94,88 @@ def update_datahub_terms(
     github_token = Secret.load(GITHUB_TOKEN_SECRET).get()  # type: ignore reportAttributeAccessIssue
     gh = Github(github_token)
     repo = gh.get_repo(DH_TERMS_GH_REPO)
-    file_path = "mdb_pvs.json"
+    file_path = "mdb_pvs_synonyms.json"
 
     results = []
     for branch in branches_to_update:
         try:
+            file_exists = False
+            file_sha = None
             try:
-                file_contents = repo.get_contents(file_path, ref=branch)
-                sha = (
-                    file_contents[0].sha
-                    if isinstance(file_contents, list)
-                    else file_contents.sha
-                )
-                logger.info("File %s already exists in branch %s", file_path, branch)
-                commit_msg = (
-                    f"Update CDE PVs and synonyms from STS for {branch} branch."
-                )
-                result = repo.update_file(
-                    path=file_path,
-                    message=commit_msg,
-                    content=pvs_json,
-                    sha=sha,
-                    branch=branch,
-                )
-                results.append(
-                    f"Updated {file_path} in {branch} branch "
-                    f"(commit: {result['commit'].sha[:7]})",
-                )
-            except GithubException:
-                logger.info("File %s does not exist in branch %s", file_path, branch)
-                commit_msg = f"Add CDE PVs and synonyms from STS for {branch} branch."
-                result = repo.create_file(
-                    path=file_path,
-                    message=commit_msg,
-                    content=pvs_json,
-                    branch=branch,
-                )
-                results.append(
-                    f"Created {file_path} in {branch} branch "
-                    f"(commit: {result['commit'].sha[:7]})",
-                )
-        except Exception as e:  # noqa: PERF203
+                logger.info("Checking for file '%s'", file_path)
+                repo_contents = repo.get_contents("")
+                if isinstance(repo_contents, list):
+                    for item in repo_contents:
+                        if item.path == file_path:
+                            file_exists = True
+                            file_sha = item.sha
+                            logger.info(
+                                "Found file %s with SHA: %s",
+                                file_path,
+                                file_sha,
+                            )
+                elif repo_contents.path == file_path:
+                    file_exists = True
+                    file_sha = repo_contents.sha
+            except GithubException as e:
+                if e.status == 404:
+                    logger.info(
+                        "File %s does not exist in branch %s",
+                        file_path,
+                        branch,
+                    )
+                    file_exists = False
+                else:
+                    raise
+            try:
+                if file_exists and file_sha is not None:
+                    logger.info(
+                        "File %s already exists in branch %s",
+                        file_path,
+                        branch,
+                    )
+                    commit_msg = (
+                        f"Update CDE PVs and synonyms from STS for {branch} branch."
+                    )
+                    result = repo.update_file(
+                        path=file_path,
+                        message=commit_msg,
+                        content=pvs_json,
+                        sha=file_sha,
+                        branch=branch,
+                    )
+                    results.append(
+                        f"Updated {file_path} in {branch} branch "
+                        f"(commit: {result['commit'].sha[:7]})",
+                    )
+                else:
+                    logger.info(
+                        "File %s does not exist in branch %s",
+                        file_path,
+                        branch,
+                    )
+                    commit_msg = (
+                        f"Add CDE PVs and synonyms from STS for {branch} branch."
+                    )
+                    result = repo.create_file(
+                        path=file_path,
+                        message=commit_msg,
+                        content=pvs_json,
+                        branch=branch,
+                    )
+                    results.append(
+                        f"Created {file_path} in {branch} branch "
+                        f"(commit: {result['commit'].sha[:7]})",
+                    )
+            except GithubException as e:
+                if e.status == 422 and "too large" in str(e):
+                    logger.exception("File %s is too large for GitHub API", file_path)
+                    results.append(
+                        f"Error: File {file_path} is too large for GitHub API",
+                    )
+                else:
+                    raise
+        except Exception as e:
             error_msg = f"Error updating {file_path} in {branch} branch: {e}"
             results.append(error_msg)
             logger.exception(error_msg)
@@ -170,10 +211,7 @@ def update_datahub_flow(
         return
     if not no_commit:
         logger.info("Committing changes...")
-        update_datahub_terms(
-            pvs_json=pvs_json,
-            tier=tier,
-        )
+        update_datahub_terms(pvs_json=pvs_json, tier=tier)
 
 
 @click.command()

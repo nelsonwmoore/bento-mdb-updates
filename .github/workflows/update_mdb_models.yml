@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
 
       - name: Install Python
         uses: actions/setup-python@v4
@@ -86,6 +88,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.ref }}
 
       - name: Install Python
         uses: actions/setup-python@v4
