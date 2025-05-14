@@ -95,7 +95,7 @@ jobs:
             --arg log_level "${{ inputs.log_level || 'info' }}" \
             --arg tier "${{ inputs.dh_tier }}" \
             --argjson dry_run "${{ inputs.dry_run || false }}" \
-            --argjson no_commit "${{ inputs.no_commit || true }}" \
+            --argjson no_commit "${{ inputs.no_commit || false }}" \
             '{
               "mdb_uri": $uri,
               "mdb_user": $user,

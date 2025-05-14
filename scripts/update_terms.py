@@ -209,7 +209,7 @@ def update_terms(  # noqa: PLR0913
     output_file: str | Path | None = None,
     commit: str | None = None,
     *,
-    no_commit: bool = True,
+    no_commit: bool = False,
 ) -> None:
     """Check for new CDE PVs and synonyms and generate Cypher to update the database."""
     logger = get_run_logger()

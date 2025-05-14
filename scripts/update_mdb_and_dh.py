@@ -15,7 +15,7 @@ def update_mdb_and_dh_flow(  # noqa: PLR0913
     tier: str,
     *,
     dry_run: bool = False,
-    no_commit: bool = True,
+    no_commit: bool = False,
 ) -> None:
     """Orchestration script to update MDB and Data Hub sequentially."""
     logger = get_run_logger()
@@ -100,7 +100,7 @@ def update_mdb_and_dh_flow(  # noqa: PLR0913
 @click.option(
     "--no_commit",
     type=bool,
-    default=True,
+    default=False,
     show_default=True,
     help="Don't commit changes",
 )
@@ -113,7 +113,7 @@ def main(  # noqa: PLR0913
     tier: str,
     *,
     dry_run: bool = False,
-    no_commit: bool = True,
+    no_commit: bool = False,
 ) -> None:
     """Orchestration script to update MDB and Data Hub sequentially."""
     update_mdb_and_dh_flow(

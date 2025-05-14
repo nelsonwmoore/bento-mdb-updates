@@ -197,7 +197,7 @@ def update_datahub_flow(
     mdb_id: str,
     tier: str,
     *,
-    no_commit: bool = True,
+    no_commit: bool = False,
 ) -> None:
     """Generate CDE PV & Synonym JSON and update Data Hub terms repo."""
     logger = get_run_logger()
@@ -246,7 +246,7 @@ def update_datahub_flow(
 @click.option(
     "--no_commit",
     type=bool,
-    default=True,
+    default=False,
     show_default=True,
     help="Don't commit changes",
 )
@@ -256,7 +256,7 @@ def main(
     mdb_id: str,
     tier: str,
     *,
-    no_commit: bool = True,
+    no_commit: bool = False,
 ) -> None:
     """Generate CDE PV & Synonym JSON and update Data Hub terms repo."""
     update_datahub_flow(
