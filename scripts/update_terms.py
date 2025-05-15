@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import click
 from bento_meta.mdb.mdb import MDB
-from github import Github, GithubException
+from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 
@@ -112,6 +112,7 @@ def commit_new_files(files: list[Path]) -> list:
     github_token = Secret.load(GITHUB_TOKEN_SECRET).get()  # type: ignore reportAttributeAccessIssue
     gh = Github(github_token)
     repo = gh.get_repo(MDB_UPDATES_GH_REPO)
+    committer = InputGitAuthor("GitHub Actions Bot", "actions@github.com")
 
     results = []
     for file_path in files:
@@ -162,6 +163,7 @@ def commit_new_files(files: list[Path]) -> list:
                         message=commit_msg,
                         content=file_content,
                         sha=file_sha,
+                        committer=committer,
                     )
                     results.append(
                         f"Updated {repo_path} (commit: {result['commit'].sha[:7]})",
@@ -173,6 +175,7 @@ def commit_new_files(files: list[Path]) -> list:
                         path=repo_path,
                         message=commit_msg,
                         content=file_content,
+                        committer=committer,
                     )
                     results.append(
                         f"Created {repo_path} (commit: {result['commit'].sha[:7]})",

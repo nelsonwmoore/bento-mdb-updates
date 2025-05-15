@@ -4,7 +4,7 @@ import json
 
 import click
 from bento_meta.mdb.mdb import MDB
-from github import Github, GithubException
+from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 
@@ -94,6 +94,7 @@ def update_datahub_terms(
     github_token = Secret.load(GITHUB_TOKEN_SECRET).get()  # type: ignore reportAttributeAccessIssue
     gh = Github(github_token)
     repo = gh.get_repo(DH_TERMS_GH_REPO)
+    committer = InputGitAuthor("GitHub Actions Bot", "actions@github.com")
     file_path = "mdb_pvs_synonyms.json"
 
     results = []
@@ -143,6 +144,7 @@ def update_datahub_terms(
                         content=pvs_json,
                         sha=file_sha,
                         branch=branch,
+                        committer=committer,
                     )
                     results.append(
                         f"Updated {file_path} in {branch} branch "
@@ -162,6 +164,7 @@ def update_datahub_terms(
                         message=commit_msg,
                         content=pvs_json,
                         branch=branch,
+                        committer=committer,
                     )
                     results.append(
                         f"Created {file_path} in {branch} branch "
