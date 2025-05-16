@@ -32,7 +32,7 @@ CCDI:
   - version: 2.1.0
     tag: 2.1.0
   latest_version: 2.1.0
-  latest_prerelease_commit: 98feaf2879d6ccbfff87392bfa303ef31d6c7ee1
+  latest_prerelease_commit: 03388528b52d0ee48c82f19c37c4ca1cd026f3da
 CDS:
   repository: CBIIT/cds-model
   mdf_directory: model-desc
@@ -74,7 +74,7 @@ CDS:
   - version: 7.0.0
     tag: 7.0.0-GC_Release
   latest_version: 7.0.0
-  latest_prerelease_commit: bbc00713d0e21570f3edbc7b3b2a4bc203ce47ef
+  latest_prerelease_commit: 15a2e73ee5682c7dd51ef11be3675bced2b1df84
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
   mdf_directory: .
