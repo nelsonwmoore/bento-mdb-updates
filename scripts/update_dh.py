@@ -104,7 +104,7 @@ def update_datahub_terms(
             file_sha = None
             try:
                 logger.info("Checking for file '%s'", file_path)
-                repo_contents = repo.get_contents("")
+                repo_contents = repo.get_contents("", ref=branch)
                 if isinstance(repo_contents, list):
                     for item in repo_contents:
                         if item.path == file_path:
