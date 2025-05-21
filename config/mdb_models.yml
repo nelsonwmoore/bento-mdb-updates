@@ -74,7 +74,7 @@ CDS:
   - version: 7.0.0
     tag: 7.0.0-GC_Release
   latest_version: 7.0.0
-  latest_prerelease_commit: 15a2e73ee5682c7dd51ef11be3675bced2b1df84
+  latest_prerelease_commit: 2c84241f892ebf165469faa18ff3b9f7be51681f
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
   mdf_directory: .
