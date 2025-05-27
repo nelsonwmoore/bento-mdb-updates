@@ -237,6 +237,10 @@ def update_terms(  # noqa: PLR0913
     with output_file.open("w", encoding="utf-8") as f:
         json.dump(mdb_cdes, f, indent=2)
 
+    if changelog.count_changesets() == 0:
+        logger.info("No changesets to commit")
+        no_commit = True
+
     if not no_commit:
         logger.info("Committing changes...")
         commit_new_files([output_file, changelog_file])
