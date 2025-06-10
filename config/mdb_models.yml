@@ -32,7 +32,7 @@ CCDI:
   - version: 2.1.0
     tag: 2.1.0
   latest_version: 2.1.0
-  latest_prerelease_commit: 03388528b52d0ee48c82f19c37c4ca1cd026f3da
+  latest_prerelease_commit: 55c2f290828d8d0bbaa3cb248eb17a6ec96d4477
 CDS:
   repository: CBIIT/cds-model
   mdf_directory: model-desc
