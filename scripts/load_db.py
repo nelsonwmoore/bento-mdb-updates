@@ -77,7 +77,7 @@ def download_from_s3(cluster: str, task_arn: str, s3_bucket: str, s3_key: str) -
         --command "mkdir -p /tmp/dumps"
     """
 
-    mkdir_result = shell_run_command(command=mkdir_command, return_all=True)
+    mkdir_result = shell_run_command.fn(command=mkdir_command, return_all=True)
     logger.info("Mkdir Exit Code: %s", mkdir_result.exit_code)
 
     # Download dump file from S3
@@ -89,7 +89,7 @@ def download_from_s3(cluster: str, task_arn: str, s3_bucket: str, s3_key: str) -
         --command "aws s3 cp s3://{s3_bucket}/{s3_key} /tmp/dumps/neo4j.dump"
     """
 
-    result = shell_run_command(command=download_command, return_all=True)
+    result = shell_run_command.fn(command=download_command, return_all=True)
 
     logger.info("S3 Download Exit Code: %s", result.exit_code)
     logger.info("S3 Download Stdout: %s", result.stdout)
@@ -120,7 +120,7 @@ def stop_neo4j_database(
         --command "cypher-shell -u "neo4j" -p {database_pwd} 'STOP DATABASE {database_name}'"
     """
 
-    result = shell_run_command(command=command, return_all=True)
+    result = shell_run_command.fn(command=command, return_all=True)
 
     logger.info("Database Stop Exit Code: %s", result.exit_code)
     logger.info("Database Stop Stdout: %s", result.stdout)
@@ -153,7 +153,7 @@ def execute_load_command(
         {overwrite_flag}"
     """
 
-    result = shell_run_command(command=command, return_all=True)
+    result = shell_run_command.fn(command=command, return_all=True)
 
     logger.info("Load Command Exit Code: %s", result.exit_code)
     logger.info("Load Command Stdout: %s", result.stdout)
@@ -180,7 +180,7 @@ def start_neo4j_database(
         --command "cypher-shell -u neo4j -p {database_pwd} 'START DATABASE {database_name}'"
     """
 
-    result = shell_run_command(command=command, return_all=True)
+    result = shell_run_command.fn(command=command, return_all=True)
 
     logger.info("Database Start Exit Code: %s", result.exit_code)
     logger.info("Database Start Stdout: %s", result.stdout)
@@ -202,7 +202,7 @@ def cleanup_temp_files(cluster: str, task_arn: str) -> str:
         --command "rm -rf /tmp/dumps/neo4j.dump"
     """
 
-    result = shell_run_command(command=command, return_all=True)
+    result = shell_run_command.fn(command=command, return_all=True)
 
     logger.info("Cleanup Exit Code: %s", result.exit_code)
     logger.info("Cleanup Stdout: %s", result.stdout)
@@ -228,6 +228,12 @@ def neo4j_load_flow(  # noqa: PLR0913
     logger = get_run_logger()
     logger.info("Running neo4j-database-load flow...")
 
+    if mdb_id not in VALID_MDB_IDS:
+        msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
+        raise ValueError(msg)
+    pwd_secret_name = mdb_id + "-pwd"
+    password = Secret.load(pwd_secret_name).get()
+
     if dry_run:
         logger.info(
             "DRY RUN: Would load database %s from s3://%s/%s",
@@ -243,12 +249,6 @@ def neo4j_load_flow(  # noqa: PLR0913
 
         download_from_s3(cluster, task_arn, s3_bucket, s3_key)
         logger.info("Successfully downloaded dump file from S3")
-
-        if mdb_id not in VALID_MDB_IDS:
-            msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
-            raise ValueError(msg)
-        pwd_secret_name = mdb_id + "-pwd"
-        password = Secret.load(pwd_secret_name).get()
 
         if not skip_stop:
             stop_exit_code = stop_neo4j_database(
