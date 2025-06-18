@@ -12,11 +12,13 @@ requires-python = ">=3.11"
 dependencies = [
     "bento-mdf>=0.11.3",
     "bento-meta>=0.2.12",
+    "boto3>=1.38.36",
     "click>=8.1.8",
     "liquichange>=0.2.1",
     "minicypher>=0.1.1",
     "packaging>=24.2",
     "prefect==3.3.4",
+    "prefect-shell>=0.3.1",
     "pygithub>=2.6.1",
     "pyliquibase>=2.4.0",
     "pytest>=8.3.4",

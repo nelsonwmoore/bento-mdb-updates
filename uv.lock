@@ -132,11 +132,13 @@ source = { editable = "." }
 dependencies = [
     { name = "bento-mdf" },
     { name = "bento-meta" },
+    { name = "boto3" },
     { name = "click" },
     { name = "liquichange" },
     { name = "minicypher" },
     { name = "packaging" },
     { name = "prefect" },
+    { name = "prefect-shell" },
     { name = "pygithub" },
     { name = "pyliquibase" },
     { name = "pytest" },
@@ -158,11 +160,13 @@ dev = [
 requires-dist = [
     { name = "bento-mdf", specifier = ">=0.11.3" },
     { name = "bento-meta", specifier = ">=0.2.12" },
+    { name = "boto3", specifier = ">=1.38.36" },
     { name = "click", specifier = ">=8.1.8" },
     { name = "liquichange", specifier = ">=0.2.1" },
     { name = "minicypher", specifier = ">=0.1.1" },
     { name = "packaging", specifier = ">=24.2" },
     { name = "prefect", specifier = "==3.3.4" },
+    { name = "prefect-shell", specifier = ">=0.3.1" },
     { name = "pygithub", specifier = ">=2.6.1" },
     { name = "pyliquibase", specifier = ">=2.4.0" },
     { name = "pytest", specifier = ">=8.3.4" },
@@ -219,6 +223,34 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4a/a4/0617f662b8d1de2773ecc2292e56fd524e38f850b9ff4b6acfb381dec801/bento_meta-0.2.14.tar.gz", hash = "sha256:e1c6f55189dbcf46284dbf3871732517920c0c5a877a1b1194a23e0f70897fb1", size = 48136, upload_time = "2025-04-25T15:28:21.019Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c3/e8/0d605884a6acce0c73641cf3ebf92c3b680b96a17d686a5995d93b5b8ecd/bento_meta-0.2.14-py3-none-any.whl", hash = "sha256:6f81c8f07c7e9d6120496d37e5020cc3f79f276219f1621a48e169e6f52253e7", size = 56484, upload_time = "2025-04-25T15:28:19.62Z" },
+]
+
+[[package]]
+name = "boto3"
+version = "1.38.36"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "botocore" },
+    { name = "jmespath" },
+    { name = "s3transfer" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/22/df130d30dcc73b726c3d254ed855806853b86b987052517337587085b6db/boto3-1.38.36.tar.gz", hash = "sha256:efe0aaa060f8fedd76e5c942055f051aee0432fc722d79d8830a9fd9db83593e", size = 111823, upload_time = "2025-06-12T19:23:25.979Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/ce/f609adc7dfd53792a9b704aa1241f8e5f34c21a5364f64b114d7874f8327/boto3-1.38.36-py3-none-any.whl", hash = "sha256:34c27d7317cadb62c0e9856e5d5aa0271ef47202d340584831048bc7ac904136", size = 139938, upload_time = "2025-06-12T19:23:23.885Z" },
+]
+
+[[package]]
+name = "botocore"
+version = "1.38.36"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "jmespath" },
+    { name = "python-dateutil" },
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2e/15/d218917f2d568f6fa92ad3831b31ecc4ee514d775a142385aa87c672bc08/botocore-1.38.36.tar.gz", hash = "sha256:4a1ced1a4218bdff0ed5b46abb54570d473154ddefafa5d121a8d96e4b76ebc1", size = 13966245, upload_time = "2025-06-12T19:23:15.215Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/2d/3ccc58837b3ed8322a15b9fd94114a326e6ab29d36a37508aadf9cf7808e/botocore-1.38.36-py3-none-any.whl", hash = "sha256:b6a50b853f6d23af9edfed89a59800c6bc1687a947cdd3492879f7d64e002d30", size = 13623866, upload_time = "2025-06-12T19:23:09.556Z" },
 ]
 
 [[package]]
@@ -728,6 +760,15 @@ wheels = [
 ]
 
 [[package]]
+name = "jmespath"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/2a/e867e8531cf3e36b41201936b7fa7ba7b5702dbef42922193f05c8976cd6/jmespath-1.0.1.tar.gz", hash = "sha256:90261b206d6defd58fdd5e85f478bf633a2901798906be2ad389150c5c60edbe", size = 25843, upload_time = "2022-06-17T18:00:12.224Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/b4/b9b800c45527aadd64d5b442f9b932b00648617eb5d63d2c7a6587b7cafc/jmespath-1.0.1-py3-none-any.whl", hash = "sha256:02e2e4cc71b5bcab88332eebf907519190dd9e6e82107fa7f83b1003a6252980", size = 20256, upload_time = "2022-06-17T18:00:10.251Z" },
+]
+
+[[package]]
 name = "jsonpatch"
 version = "1.33"
 source = { registry = "https://pypi.org/simple" }
@@ -777,11 +818,14 @@ wheels = [
 
 [[package]]
 name = "liquichange"
-version = "0.2.1"
+version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/07/e1/7b9381714dd432fa617aecc06146df5f95dadf0526816b02417a75b450ba/liquichange-0.2.1.tar.gz", hash = "sha256:38266c54e10c1dc5c130950f4b463d2090840271297d15b5789775f2883020b5", size = 11217, upload_time = "2023-07-03T18:14:43.981Z" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f9/e4/96715a633e9f43e6d33ccea4e2623878e1559d929d32aca13470bf3f0d3a/liquichange-0.2.2.tar.gz", hash = "sha256:f73b34c2fa5f1486b9c53c12d4da973355b8b251f4996d7296502bd3059d7073", size = 10563, upload_time = "2025-05-27T20:53:37.257Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/53/48e94199ea0603d6b39e1761e12cc5ebad0c04142fc1c0307d45dc7f657d/liquichange-0.2.1-py3-none-any.whl", hash = "sha256:0d857b20b911e7a665440adc2c2c2bfcfced0797c350d317e554956fe2f04db6", size = 12581, upload_time = "2023-07-03T18:14:42.713Z" },
+    { url = "https://files.pythonhosted.org/packages/16/76/8a42ffa11313d85603f815fff4becca9fad55a1d95f604a951a35ad011fa/liquichange-0.2.2-py3-none-any.whl", hash = "sha256:c7dc357096a6b42aa2f35fb70526a8945ede63b1d6441c88e2031b5a73a8f7b3", size = 12730, upload_time = "2025-05-27T20:53:35.386Z" },
 ]
 
 [[package]]
@@ -1126,6 +1170,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0d/a8/0fd3f04d7f7c6d8b60c8fb92a0585b0a072f2bd6779d41d9826910f7dd4d/prefect_docker-0.6.3.tar.gz", hash = "sha256:1d06c9311f5860ea4eee2854e56565d7c56ae608d0b68d0b6ce0519863ab7e40", size = 34685, upload_time = "2025-04-15T14:08:57.636Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/73/ee/d58bea30aaae3da5e5bc93278d097a0e38595276621483a2d94009c208a2/prefect_docker-0.6.3-py3-none-any.whl", hash = "sha256:ceeabbc090a7bd3463696e9c707b92a9e15e37b6b49c7984b1abbb6bba37eb03", size = 24638, upload_time = "2025-04-15T14:08:55.672Z" },
+]
+
+[[package]]
+name = "prefect-shell"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "prefect" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/55/62/b0451cde96825679ba9299c10a1c148c17e20873be62c839f2f64b9805e5/prefect_shell-0.3.1.tar.gz", hash = "sha256:48e6287789679a4e175118b1e77375668acbd7f0aae2f72f5d359da7cdef5e12", size = 14144, upload_time = "2024-11-15T17:16:42.704Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/16/3e8c6e7c322464c9963b1bbf90cc0286dbd3789e4e251dc9c7a02f540224/prefect_shell-0.3.1-py3-none-any.whl", hash = "sha256:44bd65f659a803fbaa811732b2443bfef069eceefdef1f8a58f39a4defb3f5cf", size = 11097, upload_time = "2024-11-15T17:16:40.766Z" },
 ]
 
 [[package]]
@@ -1747,6 +1803,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/87/b8/01c29b924dcbbed75cc45b30c30d565d763b9c4d540545a0eeecffb8f09c/ruamel.yaml.clib-0.2.12-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:4f6f3eac23941b32afccc23081e1f50612bdbe4e982012ef4f5797986828cd01", size = 709059, upload_time = "2024-12-11T19:58:18.846Z" },
     { url = "https://files.pythonhosted.org/packages/30/8c/ed73f047a73638257aa9377ad356bea4d96125b305c34a28766f4445cc0f/ruamel.yaml.clib-0.2.12-cp313-cp313-win32.whl", hash = "sha256:6442cb36270b3afb1b4951f060eccca1ce49f3d087ca1ca4563a6eb479cb3de6", size = 98583, upload_time = "2024-10-20T10:13:09.658Z" },
     { url = "https://files.pythonhosted.org/packages/b0/85/e8e751d8791564dd333d5d9a4eab0a7a115f7e349595417fd50ecae3395c/ruamel.yaml.clib-0.2.12-cp313-cp313-win_amd64.whl", hash = "sha256:e5b8daf27af0b90da7bb903a876477a9e6d7270be6146906b276605997c7e9a3", size = 115190, upload_time = "2024-10-20T10:13:10.66Z" },
+]
+
+[[package]]
+name = "s3transfer"
+version = "0.13.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "botocore" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ed/5d/9dcc100abc6711e8247af5aa561fc07c4a046f72f659c3adea9a449e191a/s3transfer-0.13.0.tar.gz", hash = "sha256:f5e6db74eb7776a37208001113ea7aa97695368242b364d73e91c981ac522177", size = 150232, upload_time = "2025-05-22T19:24:50.245Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/18/17/22bf8155aa0ea2305eefa3a6402e040df7ebe512d1310165eda1e233c3f8/s3transfer-0.13.0-py3-none-any.whl", hash = "sha256:0148ef34d6dd964d0d8cf4311b2b21c474693e57c2e069ec708ce043d2b527be", size = 85152, upload_time = "2025-05-22T19:24:48.703Z" },
 ]
 
 [[package]]
