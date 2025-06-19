@@ -17,7 +17,7 @@ DEFAULT_TASK_DEFINITION_FAMILY = "fnlmdbdevneo4jtaskDef"
 def get_running_task(
     cluster: str,
     task_definition_family: str = DEFAULT_TASK_DEFINITION_FAMILY,
-) -> None:
+) -> str:
     """Get ECS task ARN of running Neo4j container."""
     logger = get_run_logger()
     ecs = boto3.client("ecs")
@@ -78,7 +78,7 @@ def download_from_s3(cluster: str, task_arn: str, s3_bucket: str, s3_key: str) -
     """
 
     mkdir_result = shell_run_command.fn(command=mkdir_command, return_all=True)
-    logger.info("Mkdir Exit Code: %s", mkdir_result.exit_code)
+    logger.info("mkdir_result: %s", mkdir_result)
 
     # Download dump file from S3
     download_command = f"""
@@ -91,13 +91,7 @@ def download_from_s3(cluster: str, task_arn: str, s3_bucket: str, s3_key: str) -
 
     result = shell_run_command.fn(command=download_command, return_all=True)
 
-    logger.info("S3 Download Exit Code: %s", result.exit_code)
-    logger.info("S3 Download Stdout: %s", result.stdout)
-    logger.info("S3 Download Stderr: %s", result.stderr)
-
-    if result.exit_code != 0:
-        msg = "S3 download failed."
-        raise RuntimeError(msg)
+    logger.info("S3 download result: %s", result)
 
     return "Download successful."
 
@@ -108,7 +102,7 @@ def stop_neo4j_database(
     task_arn: str,
     database_name: str,
     database_pwd: str,
-) -> str:
+) -> None:
     """Stop Neo4j database before loading."""
     logger = get_run_logger()
 
@@ -122,11 +116,7 @@ def stop_neo4j_database(
 
     result = shell_run_command.fn(command=command, return_all=True)
 
-    logger.info("Database Stop Exit Code: %s", result.exit_code)
-    logger.info("Database Stop Stdout: %s", result.stdout)
-    logger.info("Database Stop Stderr: %s", result.stderr)
-
-    return result.exit_code
+    logger.info("Database stop result: %s", result)
 
 
 @task
@@ -136,7 +126,7 @@ def execute_load_command(
     database_name: str,
     *,
     overwrite: bool = True,
-) -> str:
+) -> None:
     """Execute Neo4j database load command."""
     logger = get_run_logger()
 
@@ -155,11 +145,7 @@ def execute_load_command(
 
     result = shell_run_command.fn(command=command, return_all=True)
 
-    logger.info("Load Command Exit Code: %s", result.exit_code)
-    logger.info("Load Command Stdout: %s", result.stdout)
-    logger.info("Load Command Stderr: %s", result.stderr)
-
-    return result.exit_code
+    logger.info("Load command result: %s", result)
 
 
 @task
@@ -168,7 +154,7 @@ def start_neo4j_database(
     task_arn: str,
     database_name: str,
     database_pwd: str,
-) -> str:
+) -> None:
     """Start Neo4j database after loading."""
     logger = get_run_logger()
 
@@ -182,11 +168,7 @@ def start_neo4j_database(
 
     result = shell_run_command.fn(command=command, return_all=True)
 
-    logger.info("Database Start Exit Code: %s", result.exit_code)
-    logger.info("Database Start Stdout: %s", result.stdout)
-    logger.info("Database Start Stderr: %s", result.stderr)
-
-    return result.exit_code
+    logger.info("Database start result: %s", result)
 
 
 @task
@@ -204,9 +186,7 @@ def cleanup_temp_files(cluster: str, task_arn: str) -> str:
 
     result = shell_run_command.fn(command=command, return_all=True)
 
-    logger.info("Cleanup Exit Code: %s", result.exit_code)
-    logger.info("Cleanup Stdout: %s", result.stdout)
-    logger.info("Cleanup Stderr: %s", result.stderr)
+    logger.info("Cleanup result: %s", result)
 
     return "Cleanup completed."
 
@@ -251,19 +231,14 @@ def neo4j_load_flow(  # noqa: PLR0913
         logger.info("Successfully downloaded dump file from S3")
 
         if not skip_stop:
-            stop_exit_code = stop_neo4j_database(
+            stop_neo4j_database(
                 cluster,
                 task_arn,
                 database_name,
                 password,
             )
-            if stop_exit_code != 0:
-                logger.warning(
-                    "Database stop command returned non-zero exit code: %s",
-                    stop_exit_code,
-                )
 
-        load_exit_code = execute_load_command(
+        execute_load_command(
             cluster,
             task_arn,
             database_name,
@@ -271,36 +246,21 @@ def neo4j_load_flow(  # noqa: PLR0913
         )
 
         if not skip_stop:
-            start_exit_code = start_neo4j_database(
+            start_neo4j_database(
                 cluster,
                 task_arn,
                 database_name,
                 password,
             )
-            if start_exit_code != 0:
-                logger.error("Failed to start Neo4j database after load")
-                msg = "Neo4j database failed to start"
-                raise RuntimeError(msg)
 
-        if load_exit_code == 0:
-            logger.info("Neo4j database load completed successfully")
-            # Clean up temporary files
-            if not skip_cleanup:
-                cleanup_temp_files(cluster, task_arn)
-        else:
-            logger.error(
-                "Neo4j database load failed with exit code: %s",
-                load_exit_code,
-            )
-            msg = f"Database load failed with exit code: {load_exit_code}"
-            raise RuntimeError(msg)
-
+        if not skip_cleanup:
+            cleanup_temp_files(cluster, task_arn)
     except Exception:
         logger.exception("Neo4j load flow failed")
         if not skip_stop:
             try:
                 task_arn = get_running_task(cluster, task_definition_family)
-                start_neo4j_database(cluster, task_arn, database_name)
+                start_neo4j_database(cluster, task_arn, database_name, password)
             except Exception:
                 logger.exception(
                     "Failed to restart Neo4j database after error",
