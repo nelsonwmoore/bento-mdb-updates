@@ -12,10 +12,8 @@ pull:
       --frozen"
 - prefect.deployments.steps.run_shell_script:
     id: install-aws-cli
-    script: |
-      #!/bin/bash
-      set -euo pipefail
-      apt-get update && 
+    script: >
+      apt-get update &&
       apt-get install -y --no-install-recommends curl unzip &&
       cd /tmp &&
       curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" &&
