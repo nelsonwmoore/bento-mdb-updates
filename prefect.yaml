@@ -93,3 +93,14 @@ deployments:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: neo4j-database-load
+  version:
+  tags: []
+  concurrency_limit:
+  description: Load Neo4j database from S3 dump file.
+  entrypoint: scripts/load_db.py:neo4j-database-load
+  parameters: {}
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
