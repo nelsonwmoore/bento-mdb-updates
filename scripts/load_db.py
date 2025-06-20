@@ -216,7 +216,7 @@ async def neo4j_load_flow(  # noqa: PLR0913
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
     pwd_secret_name = mdb_id + "-pwd"
-    password = Secret.load(pwd_secret_name).get()
+    password = (await Secret.load(pwd_secret_name)).get()
 
     if dry_run:
         logger.info(
