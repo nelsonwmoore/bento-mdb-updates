@@ -78,6 +78,7 @@ async def download_from_s3(
         --cluster {cluster} \
         --task {task_arn} \
         --container neo4j \
+        --interactive \
         --command "mkdir -p /tmp/dumps"
     """
 
@@ -90,6 +91,7 @@ async def download_from_s3(
         --cluster {cluster} \
         --task {task_arn} \
         --container neo4j \
+        --interactive \
         --command "aws s3 cp s3://{s3_bucket}/{s3_key} /tmp/dumps/neo4j.dump"
     """
 
@@ -115,6 +117,7 @@ async def stop_neo4j_database(
         --cluster {cluster} \
         --task {task_arn} \
         --container neo4j \
+        --interactive \
         --command "cypher-shell -u neo4j -p {database_pwd} 'STOP DATABASE {database_name}'"
     """
 
@@ -141,10 +144,8 @@ async def execute_load_command(
         --cluster {cluster} \
         --task {task_arn} \
         --container neo4j \
-        --command "neo4j-admin database load" \
-        --from-path=/tmp/dumps/neo4j.dump \
-        --database={database_name} \
-        {overwrite_flag}"
+        --interactive \
+        --command "neo4j-admin database load --from-path=/tmp/dumps/neo4j.dump --database={database_name} {overwrite_flag}"
     """
 
     result = await shell_run_command(command=command, return_all=True)
@@ -167,6 +168,7 @@ async def start_neo4j_database(
         --cluster {cluster} \
         --task {task_arn} \
         --container neo4j \
+        --interactive \
         --command "cypher-shell -u neo4j -p {database_pwd} 'START DATABASE {database_name}'"
     """
 
@@ -185,6 +187,7 @@ async def cleanup_temp_files(cluster: str, task_arn: str) -> str:
         --cluster {cluster} \
         --task {task_arn} \
         --container neo4j \
+        --interactive \
         --command "rm -rf /tmp/dumps/neo4j.dump"
     """
 
