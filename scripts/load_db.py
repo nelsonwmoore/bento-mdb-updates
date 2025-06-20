@@ -141,7 +141,7 @@ async def execute_load_command(
         --cluster {cluster} \
         --task {task_arn} \
         --container neo4j \
-        --command "neo4j-admin database load \
+        --command "neo4j-admin database load" \
         --from-path=/tmp/dumps/neo4j.dump \
         --database={database_name} \
         {overwrite_flag}"

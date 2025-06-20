@@ -10,6 +10,20 @@ pull:
     id: install-dependencies
     script: sh -c "cd bento-mdb-updates-main && uv pip install --system . && uv sync
       --frozen"
+- prefect.deployments.steps.run_shell_script:
+    id: install-aws-cli
+    script: |
+      set -euo pipefail
+      apt-get update && 
+      apt-get install -y --no-install-recommends curl unzip &&
+      cd /tmp &&
+      curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" &&
+      unzip awscliv2.zip &&
+      ./aws/install --update &&
+      curl "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o "session-manager-plugin.deb" &&
+      (dpkg -i session-manager-plugin.deb || apt-get install -f -y) &&
+      apt-get clean &&
+      rm -rf /var/lib/apt/lists/* /tmp/awscliv2.zip /tmp/aws/ /tmp/session-manager-plugin.deb
 
 work_pool:
   name: mdb-docker-pool
