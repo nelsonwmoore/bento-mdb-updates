@@ -79,13 +79,6 @@ logger = logging.getLogger(__name__)
     type=bool,
     help="Is this the latest data model version?",
 )
-@click.option(
-    "-t",
-    "--terms_only",
-    required=False,
-    type=bool,
-    help="MDF is only terms with empty nodes/rels/propdefs",
-)
 def main(  # noqa: PLR0913
     model_handle: str,
     mdf_files: str | list[str],
@@ -96,7 +89,6 @@ def main(  # noqa: PLR0913
     *,
     add_rollback: bool,
     latest_version: bool,
-    terms_only: bool,
 ) -> None:
     """Get liquibase changelog from mdf files for a model."""
     logger.info("Script started")
@@ -110,7 +102,6 @@ def main(  # noqa: PLR0913
     converter = ModelToChangelogConverter(
         model=mdf.model,
         add_rollback=add_rollback,
-        terms_only=terms_only,
     )
     changelog = converter.convert_model_to_changelog(
         author,

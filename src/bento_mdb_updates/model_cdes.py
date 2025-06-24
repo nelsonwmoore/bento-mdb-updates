@@ -185,18 +185,28 @@ def compare_model_specs_to_mdb(
     mdb: MDB,
     *,
     datahub_only: bool = False,
+    include_prerelease: bool = False,
 ) -> dict[str, list[str]]:
     """Get model versions from Model Spec yaml that aren't in an MDB."""
     mdb_models = mdb.models
-    spec_models = {
-        model: [
-            v["version"]
-            for v in spec["versions"]
-            if not v.get("ignore", False)
-            and (not datahub_only or spec.get("in_data_hub", False))
+    spec_models = {}
+    for model, spec in model_specs.items():
+        if datahub_only and not spec.get("in_data_hub", False):
+            continue
+        versions = [
+            v["version"] for v in spec["versions"] if not v.get("ignore", False)
         ]
-        for model, spec in model_specs.items()
-    }
+        if include_prerelease and spec.get("latest_prerelease_commit"):
+            commit_short = spec["latest_prerelease_commit"][:7]
+            prerelease_version = f"{spec['latest_prerelease_version']}-{commit_short}"
+            prerelease_base_version = spec.get(
+                "latest_prerelease_version",
+                spec["latest_version"],
+            )
+            prerelease_version = f"{prerelease_base_version}-{commit_short}"
+            versions.append(prerelease_version)
+        spec_models[model] = versions
+
     logger.info("MDB models=%s", mdb_models)
     logger.info("Spec models=%s", spec_models)
     return {

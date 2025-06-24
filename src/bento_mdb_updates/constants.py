@@ -9,6 +9,9 @@ VALID_MDB_IDS = [
     "og-mdb-nightly",
     "og-mdb-prod",
 ]
+MDB_IDS_WITH_PRERELEASES = [
+    "og-mdb-nightly",
+]
 VALID_TIERS = {
     "lower": ["dev", "dev2", "qa", "qa2"],
     "upper": ["stage", "prod"],
