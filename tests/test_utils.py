@@ -3,6 +3,9 @@
 import io
 import re
 import zipfile
+from typing import Any
+
+import pytest
 
 from bento_mdb_updates.datatypes import (
     AnnotationSpec,
@@ -17,10 +20,11 @@ def remove_nanoids_from_str(statement: str) -> str:
     return re.sub(r"nanoid:'[^']*'", "nanoid:''", statement)
 
 
-def assert_equal(actual, expected) -> None:
+def assert_equal(actual: Any, expected: Any) -> None:  # noqa: ANN401
     """
-    Custom assertion function to compare actual and expected results.
-    Prints both values in case of failure for better debugging.
+    Compare actual and expected results.
+
+    Print both values in case of failure for better debugging.
     """
     if actual != expected:
         print("\n=== ACTUAL ===\n", actual)

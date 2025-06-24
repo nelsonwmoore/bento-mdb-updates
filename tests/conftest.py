@@ -26,7 +26,9 @@ def mdb_versioned(docker_services, docker_ip):
     http_url = f"http://{docker_ip}:{http_port}"
     sleep(wait)
     docker_services.wait_until_responsive(
-        timeout=30.0, pause=0.1, check=lambda: is_responsive(http_url)
+        timeout=30.0,
+        pause=0.1,
+        check=lambda: is_responsive(http_url),
     )
     return bolt_url, http_url
 
@@ -38,7 +40,9 @@ def prefect_worker(docker_services, docker_ip):
     http_url = f"http://{docker_ip}:{http_port}"
     sleep(wait)
     docker_services.wait_until_responsive(
-        timeout=30.0, pause=0.1, check=lambda: is_responsive(http_url)
+        timeout=30.0,
+        pause=0.1,
+        check=lambda: is_responsive(http_url),
     )
     return "prefect-worker"
 
@@ -67,7 +71,7 @@ def run_prefect_flow(docker_services, mdb_versioned, prefect_worker):
             cmd.append(str(arg))
         for key, value in kwargs.items():
             cmd.append(f"--{key}={value}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True)
         return result
 
     return _run_flow

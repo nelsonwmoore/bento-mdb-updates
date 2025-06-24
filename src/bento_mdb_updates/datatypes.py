@@ -18,6 +18,7 @@ class ModelSpec(TypedDict):
     versions: list[dict[str, Any]]
     latest_version: str
     latest_prerelease_commit: str | None
+    latest_prerelease_version: str | None
 
 
 class PermissibleValue(TypedDict):

@@ -413,8 +413,8 @@ class GitHubClient:  # TODO: replace with GitHub API client
             logger.exception("Failed to add %s to git", file_to_commit.name)
             return
 
-    def get_prerelease_model_commit(self, model: str) -> str | None:
-        """Get latest commit SHA for prerelease data hub model from cache."""
+    def get_prerelease_model_info(self, model: str) -> tuple[str, str] | None:
+        """Get latest commit SHA & version for prerelease model from DH cache."""
         url = f"{self.BASE_URL}/repos/{self.DH_MODEL_REPO}/commits"
         params = {
             "sha": "dev2",
@@ -432,5 +432,29 @@ class GitHubClient:  # TODO: replace with GitHub API client
         commits = response.json()
         if not commits:
             logger.warning("No commits found for path cache/%s on branch dev2", model)
-            return ""
-        return commits[0]["sha"]
+            return None
+        commit_sha = commits[0]["sha"]
+
+        commit_url = f"{self.BASE_URL}/repos/{self.DH_MODEL_REPO}/commits/{commit_sha}"
+        commit_response = self.session.get(commit_url, timeout=DEFAULT_TIMEOUT)
+        if commit_response.status_code != RESPONSE_200:
+            logger.error("Failed to get commit details for %s", commit_sha)
+            return None
+        commit_data = commit_response.json()
+        cache_prefix = f"cache/{model}/"
+        for file_info in commit_data.get("files", []):
+            file_path = file_info["filename"]
+            if file_path.startswith(cache_prefix):
+                # Extract everything after "cache/{model}/" up to the next "/"
+                remainder = file_path[len(cache_prefix) :]
+                if "/" in remainder:
+                    version = remainder.split("/")[0]
+                    logger.info(
+                        "Found latest prerelease version %s for model %s",
+                        version,
+                        model,
+                    )
+                    return commit_sha, version
+
+        logger.warning("Could not extract version from commit files for %s", model)
+        return None

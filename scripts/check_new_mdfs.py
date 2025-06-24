@@ -106,10 +106,11 @@ def update_model_versions(
         if not spec["in_data_hub"]:
             continue
         logger.info("Checking %s for new prerelease commits...", model)
-        new_sha = github_client.get_prerelease_model_commit(model)
-        if not new_sha:
+        new_prerelease_info = github_client.get_prerelease_model_info(model)
+        if not new_prerelease_info:
             logger.info("No prerelease commits found for %s", model)
             continue
+        new_sha, new_version = new_prerelease_info
         old_sha = spec.get("latest_prerelease_commit", "")
         if new_sha != old_sha:
             logger.info(
@@ -118,6 +119,7 @@ def update_model_versions(
                 new_sha,
             )
             spec["latest_prerelease_commit"] = new_sha
+            spec["latest_prerelease_version"] = new_version
             updated = True
     return updated
 
