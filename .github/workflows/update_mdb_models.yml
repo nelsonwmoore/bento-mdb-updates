@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - config/mdb_models.yml
-  workflow_dispatch:
+  workflow_dispatch: # update an mdb with a certain model version
     inputs:
       models_spec_path:
         description: "Path to YAML files with models & refs their MDFs."
@@ -27,30 +27,81 @@ on:
       datahub_only:
         description: "Only include datahub models"
         required: false
-        default: "false"
+        type: boolean
+        default: false
       mdb_id:
         description: "ID of MDB to update"
         required: true
         type: string
+      dh_tier:
+        description: "Data Hub tier to update"
+        required: true
+        type: choice
+        options:
+          - "upper"
+          - "lower"
+          - "both"
+        default: "both"
+      log_level:
+        description: "Log level"
+        required: false
+        type: string
+        default: "info"
+      dry_run:
+        description: "Dry run flag"
+        required: false
+        type: boolean
+        default: false
+      no_commit:
+        description: "Don't commit changes to GitHub."
+        required: false
+        type: boolean
+        default: false
+      model_changelog_path:
+        description: "Path to output model changelog file"
+        required: false
+        type: string
+      author:
+        description: "Author name for changes"
+        required: false
+        default: "GitHub Actions"
+        type: string
+      commit_sha:
+        description: "Commit SHA for reference"
+        required: false
+        default: ""
+        type: string
+      add_rollback:
+        description: "Add rollback statements to changelog"
+        required: false
+        type: boolean
+        default: false
+      latest_version:
+        description: "Is this the latest data model version?"
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   determine-models:
     runs-on: ubuntu-latest
     outputs:
       affected_models: ${{ steps.set-matrix.outputs.model_matrix }}
+      affected_models_upper: ${{ steps.set-matrix.outputs.model_matrix_upper }}
+      affected_models_lower: ${{ steps.set-matrix.outputs.model_matrix_lower }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           ref: ${{ github.ref }}
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
         with:
           python-version-file: ".python-version"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
           version: "0.5.10"
 
@@ -61,22 +112,182 @@ jobs:
 
       - name: Generate Model Version Matrix
         id: set-matrix
+        env:
+          PREFECT_API_KEY: ${{ secrets.PREFECT_API_KEY }}
+          PREFECT_API_URL: ${{ secrets.PREFECT_API_URL }}
         run: |
-          # If specific model/version/mdfs provided, use them; otherwise, generate the full matrix.
-          if [ "${{ github.event.inputs.model }}" != "" ] && [ "${{ github.event.inputs.version }}" != "" ]; then
-            echo "{\"include\": [{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files || '[]' }}]}]}" > matrix.json
-          else
-            generate_model_version_matrix \
-              --mdb_uri="${{ secrets.NEO4J_MDB_URI }}" \
-              --mdb_user="${{ secrets.NEO4J_MDB_USER }}" \
-              --mdb_pass="${{ secrets.NEO4J_MDB_PASS }}" \
-              --model_specs_yaml="${{ github.event.inputs.models_spec_path }}" \
-              --datahub_only="${{ github.event.inputs.datahub_only || 'false' }}" \
-              > matrix.json
+          set -xeuo pipefail
+          trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
+
+          UPPER_MDB_URI="jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687"
+          LOWER_MDB_URI="jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587"
+
+          IS_AUTOMATIC="false"
+          if [ "${{ github.event_name }} " == "push" ]; then
+            IS_AUTOMATIC="true"
           fi
-          MATRIX=$(cat matrix.json)
-          echo "model_matrix=$MATRIX" >> $GITHUB_OUTPUT
-          echo "Affected models: $MATRIX"
+
+          if [ "$IS_AUTOMATIC" == "true" ]; then
+            TIER="both"
+            UPPER_MDB_ID="og-mdb-dev"
+            LOWER_MDB_ID="og-mdb-nightly"
+          else
+            TIER="${{ github.event.inputs.dh_tier }}"
+            MDB_ID="${{ github.event.inputs.mdb_id }}"
+            if [ "$MDB_ID" == "og-mdb-dev" ]; then
+              UPPER_MDB_ID="og-mdb-dev"
+              LOWER_MDB_ID=""
+              TIER="upper"
+            elif [ "$MDB_ID" == "og-mdb-nightly" ]; then
+              UPPER_MDB_ID=""
+              LOWER_MDB_ID="og-mdb-nightly"
+              TIER="lower"
+            fi
+          fi
+
+          # If specific model/version/mdfs provided, use them
+          if [ "${{ github.event.inputs.model }}" != "" ] && [ "${{ github.event.inputs.version }}" != "" ]; then
+            MODEL_INFO="{\"model\": \"${{ github.event.inputs.model }}\", \"version\": \"${{ github.event.inputs.version }}\", \"mdf_files\": [${{ github.event.inputs.mdf_files || '[]' }}]}"
+            if [ -n "$UPPER_MDB_ID" ]; then
+              echo "{\"include\": [$MODEL_INFO]}" > matrix_upper.json
+            else
+              echo "{\"include\": []}" > matrix_upper.json
+            fi            
+            if [ -n "$LOWER_MDB_ID" ]; then
+              echo "{\"include\": [$MODEL_INFO]}" > matrix_lower.json
+            else
+              echo "{\"include\": []}" > matrix_lower.json
+            fi
+          else
+            # otherwise, generate the full matrix for both tiers
+            if [ -n "$UPPER_MDB_ID" ]; then
+              UPPER_PARAMS=$(jq -n \
+              --arg mdb_uri "$UPPER_MDB_URI" \
+              --arg mdb_user "neo4j" \
+              --arg mdb_id "$UPPER_MDB_ID" \
+              --arg model_specs_yaml "${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}" \
+              --argjson datahub_only "${{ github.event.inputs.datahub_only || false }}" \
+              '{
+                "mdb_uri": $mdb_uri,
+                "mdb_user": $mdb_user,
+                "mdb_id": $mdb_id,
+                "model_specs_yaml": $model_specs_yaml,
+                "datahub_only": $datahub_only
+              }')
+              echo "Running Prefect deployment for upper tier with params: $UPPER_PARAMS"
+
+              watch_out_upper=$(
+                prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
+                  --params "$UPPER_PARAMS" \
+                  --watch \
+                  --watch-interval 30 2>&1 | tee watch_upper.log
+              )
+              echo "watch_out_upper=$watch_out_upper"
+              
+              UPPER_RUN_ID=$(
+                grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch_upper.log \
+                | head -n1
+              )
+              echo "Upper tier run ID: $UPPER_RUN_ID"
+
+              UPPER_LOG_FILE="${UPPER_RUN_ID}_run.log"
+              prefect flow-run logs "$UPPER_RUN_ID" > "$UPPER_LOG_FILE"
+              
+              echo "Checking for MATRIX_JSON in upper tier logs:"
+              grep -a "MATRIX_JSON" "$UPPER_LOG_FILE" || echo "No MATRIX_JSON found in upper tier logs"
+              
+              MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$UPPER_LOG_FILE" \
+                | grep -oP 'MATRIX_JSON:\K\{.*\}' \
+                || echo "")
+              
+              if [ -n "$MATRIX_OUTPUT" ]; then
+                echo "$MATRIX_OUTPUT" > matrix_upper.json
+                echo "Upper tier matrix extracted successfully"
+              else
+                echo "Warning: Could not extract matrix from upper tier deployment output"
+                echo "{\"include\": []}" > matrix_upper.json
+              fi
+            else
+              echo "{\"include\": []}" > matrix_upper.json
+            fi
+
+            if [ -n "$LOWER_MDB_ID" ]; then
+              LOWER_PARAMS=$(jq -n \
+                --arg mdb_uri "$LOWER_MDB_URI" \
+                --arg mdb_user "neo4j" \
+                --arg mdb_id "$LOWER_MDB_ID" \
+                --arg model_specs_yaml "${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}" \
+                --argjson datahub_only "${{ github.event.inputs.datahub_only || false }}" \
+                '{
+                  "mdb_uri": $mdb_uri,
+                  "mdb_user": $mdb_user,
+                  "mdb_id": $mdb_id,
+                  "model_specs_yaml": $model_specs_yaml,
+                  "datahub_only": $datahub_only,
+                }')
+              
+              echo "Running Prefect deployment for lower tier with params: $LOWER_PARAMS"
+
+              watch_out_lower=$(
+                prefect deployment run generate-model-version-matrix/generate-model-version-matrix \
+                  --params "$LOWER_PARAMS" \
+                  --watch \
+                  --watch-interval 30 2>&1 | tee watch_lower.log
+              )
+              echo "watch_out_lower=$watch_out_lower"
+              
+              LOWER_RUN_ID=$(
+                grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" watch_lower.log \
+                | head -n1
+              )
+              echo "Lower tier run ID: $LOWER_RUN_ID"
+
+              LOWER_LOG_FILE="${LOWER_RUN_ID}_run.log"
+              prefect flow-run logs "$LOWER_RUN_ID" > "$LOWER_LOG_FILE"
+              
+              echo "Checking for MATRIX_JSON in lower tier logs:"
+              grep -a "MATRIX_JSON" "$LOWER_LOG_FILE" || echo "No MATRIX_JSON found in lower tier logs"
+              
+              MATRIX_OUTPUT=$(grep -a -m1 "MATRIX_JSON:" "$LOWER_LOG_FILE" \
+                | grep -oP 'MATRIX_JSON:\K\{.*\}' \
+                || echo "")
+
+              if [ -n "$MATRIX_OUTPUT" ]; then
+                echo "$MATRIX_OUTPUT" > matrix_lower.json
+                echo "Lower tier matrix extracted successfully"
+              else
+                echo "Warning: Could not extract matrix from lower tier deployment output"
+                echo "{\"include\": []}" > matrix_lower.json
+              fi
+            else
+              echo "{\"include\": []}" > matrix_lower.json
+            fi
+          fi
+
+          # validate json
+          if ! jq . matrix_upper.json > /dev/null 2>&1; then
+            echo "Error: Invalid JSON in matrix_upper.json"
+            exit 1
+          fi
+          
+          if ! jq . matrix_lower.json > /dev/null 2>&1; then
+            echo "Error: Invalid JSON in matrix_lower.json"
+            exit 1
+          fi
+
+          UPPER_MATRIX=$(cat matrix_upper.json)
+          LOWER_MATRIX=$(cat matrix_lower.json)
+
+          COMBINED_INCLUDE=$(jq -s '.[0].include + .[1].include | unique_by(.model + .version)' matrix_upper.json matrix_lower.json)
+          COMBINED_MATRIX="{\"include\": $COMBINED_INCLUDE}"
+          
+          echo "model_matrix=$COMBINED_MATRIX" >> $GITHUB_OUTPUT
+          echo "model_matrix_upper=$UPPER_MATRIX" >> $GITHUB_OUTPUT
+          echo "model_matrix_lower=$LOWER_MATRIX" >> $GITHUB_OUTPUT
+          
+          echo "Combined matrix: $COMBINED_MATRIX"
+          echo "Upper tier matrix: $UPPER_MATRIX"
+          echo "Lower tier matrix: $LOWER_MATRIX"
 
   generate-changelogs:
     needs: determine-models
@@ -87,17 +298,17 @@ jobs:
       matrix: ${{ fromJson(needs.determine-models.outputs.affected_models) }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           ref: ${{ github.ref }}
 
       - name: Install Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@7f4fc3e22c37d6ff65e88745f38bd3157c663f7c
         with:
           python-version-file: ".python-version"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86
         with:
           version: "0.5.10"
 

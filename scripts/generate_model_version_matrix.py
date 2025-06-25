@@ -4,43 +4,68 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import click
-import dotenv
 from bento_meta.mdb import MDB
 from prefect import flow
+from prefect.blocks.system import Secret
 
+from bento_mdb_updates.constants import MDB_IDS_WITH_PRERELEASES, VALID_MDB_IDS
 from bento_mdb_updates.model_cdes import (
     compare_model_specs_to_mdb,
     get_yaml_files_from_spec,
     load_model_specs_from_yaml,
 )
 
-dotenv.load_dotenv(Path("config/.env"), override=True)
+
+def make_matrix_output_more_visible(matrix: dict) -> None:
+    """
+    Make the matrix output more visible in logs.
+
+    Print multiple times with clear markers.
+    """
+    result_json = json.dumps(matrix)
+    print("\n" + "*" * 80)  # noqa: T201
+    print("MATRIX_JSON_BEGIN")  # noqa: T201
+    print(f"MATRIX_JSON:{result_json}")  # noqa: T201
+    print("MATRIX_JSON_END")  # noqa: T201
+    print("*" * 80 + "\n")  # noqa: T201
+    print(f"MATRIX_JSON:{result_json}")  # noqa: T201
 
 
 @flow(name="generate-model-version-matrix")
 def model_matrix_flow(
     mdb_uri: str,
     mdb_user: str,
-    mdb_pass: str,
+    mdb_id: str,
     model_specs_yaml: str,
     *,
     datahub_only: bool,
 ) -> None:
     """Generate matrix with models/versions to be added to MDB."""
     model_specs = load_model_specs_from_yaml(Path(model_specs_yaml))
+    if mdb_id not in VALID_MDB_IDS:
+        msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
+        raise ValueError(msg)
+    pwd_secret_name = mdb_id + "-pwd"
+    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
+    if mdb_id.startswith("og-mdb"):
+        password = ""
+    if mdb_uri.startswith("jdbc:neo4j:"):
+        mdb_uri = mdb_uri.replace("jdbc:neo4j:", "")
     mdb = MDB(
-        uri=mdb_uri or os.environ.get("NEO4J_MDB_URI"),
-        user=mdb_user or os.environ.get("NEO4J_MDB_USER"),
-        password=mdb_pass or os.environ.get("NEO4J_MDB_PASS"),
+        uri=mdb_uri,
+        user=mdb_user,
+        password=password,
     )
+
+    include_prerelease = mdb_id in MDB_IDS_WITH_PRERELEASES
     models_to_update = compare_model_specs_to_mdb(
         model_specs,
         mdb,
         datahub_only=datahub_only,
+        include_prerelease=include_prerelease,
     )
     matrix = {
         "include": [
@@ -53,7 +78,7 @@ def model_matrix_flow(
             for version in versions
         ],
     }
-    print(json.dumps(matrix))  # noqa: T201
+    make_matrix_output_more_visible(matrix)
 
 
 @click.command()
@@ -72,11 +97,11 @@ def model_matrix_flow(
     help="metamodel database username",
 )
 @click.option(
-    "--mdb_pass",
+    "--mdb_id",
     required=True,
     type=str,
     prompt=True,
-    help="metamodel database password",
+    help="MDB ID",
 )
 @click.option(
     "--model_specs_yaml",
@@ -95,7 +120,7 @@ def model_matrix_flow(
 def main(
     mdb_uri: str,
     mdb_user: str,
-    mdb_pass: str,
+    mdb_id: str,
     model_specs_yaml: str,
     *,
     datahub_only: bool,
@@ -104,7 +129,7 @@ def main(
     model_matrix_flow(
         mdb_uri=mdb_uri,
         mdb_user=mdb_user,
-        mdb_pass=mdb_pass,
+        mdb_id=mdb_id,
         model_specs_yaml=model_specs_yaml,
         datahub_only=datahub_only,
     )
