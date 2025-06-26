@@ -34,7 +34,7 @@ def make_matrix_output_more_visible(matrix: dict) -> None:
     print(f"MATRIX_JSON:{result_json}")  # noqa: T201
 
 
-@flow(name="generate-model-version-matrix")
+@flow(name="generate-model-version-matrix", log_prints=True)
 def model_matrix_flow(
     mdb_uri: str,
     mdb_user: str,
