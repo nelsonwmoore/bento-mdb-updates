@@ -107,3 +107,14 @@ deployments:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: generate-model-version-matrix
+  version:
+  tags: []
+  concurrency_limit:
+  description: Generate matrix with models/versions to be added to MDB.
+  entrypoint: scripts/generate_model_version_matrix.py:model_matrix_flow
+  parameters: {}
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
