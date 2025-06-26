@@ -198,10 +198,9 @@ def compare_model_specs_to_mdb(
         ]
         if include_prerelease and spec.get("latest_prerelease_commit"):
             commit_short = spec["latest_prerelease_commit"][:7]
-            prerelease_version = f"{spec['latest_prerelease_version']}-{commit_short}"
             prerelease_base_version = spec.get(
                 "latest_prerelease_version",
-                spec["latest_version"],
+                spec.get("latest_version", "unknown"),
             )
             prerelease_version = f"{prerelease_base_version}-{commit_short}"
             versions.append(prerelease_version)
