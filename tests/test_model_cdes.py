@@ -106,7 +106,7 @@ class TestGetYamlFilesFromSpec:
             },
         )
         actual = get_yaml_files_from_spec(test_spec, test_model, "1.1.0-abcd123")
-        base_url = "https://raw.githubusercontent.com"
+        base_url = "https://raw.githubusercontent.com/CBIIT"
         expected = [
             f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.2.0/test-model.yml",
             f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.2.0/test-model-props.yml",

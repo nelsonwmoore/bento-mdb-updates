@@ -48,7 +48,7 @@ def get_yaml_files_from_spec(
     is_prerelease = bool(re.search(r"-[a-f0-9]{7}$", version, re.IGNORECASE))
     if is_prerelease:
         logger.info("Is prerelease version: %s", version)
-        repo = "crdc-datahub-models"
+        repo = "CBIIT/crdc-datahub-models"
         tag = "dev2"
         mdf_directory = f"cache/{model}/{model_spec['latest_prerelease_version']}"
     else:
