@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -35,14 +36,32 @@ def load_model_specs_from_yaml(yaml_file: Path) -> dict[str, ModelSpec]:
 
 def get_yaml_files_from_spec(
     model_spec: ModelSpec,
+    model: str,
     version: str | None = None,
 ) -> list[str]:
     """Get YAML file urls from model spec for a given version."""
     if not version:
         version = model_spec["latest_version"]
-    repo = model_spec.get("repository")
     mdf_directory = model_spec.get("mdf_directory", "")
     mdf_files = model_spec.get("mdf_files", [])
+
+    is_prerelease = bool(re.search(r"-[a-f0-9]{7}$", version, re.IGNORECASE))
+    if is_prerelease:
+        logger.info("Is prerelease version: %s", version)
+        repo = "crdc-datahub-models"
+        tag = "dev2"
+        mdf_directory = f"cache/{model}/{model_spec['latest_prerelease_version']}"
+    else:
+        repo = model_spec.get("repository")
+        version_entry = next(
+            (v for v in model_spec.get("versions", []) if v["version"] == version),
+            None,
+        )
+        if not version_entry:
+            msg = f"Version {version} not found in model spec."
+            raise ValueError(msg)
+
+        tag = version_entry.get("tag", version)
 
     if not repo:
         msg = "Model spec must have a repository."
@@ -50,16 +69,6 @@ def get_yaml_files_from_spec(
     if not mdf_files:
         msg = "Model spec must have file names for MDF files."
         raise ValueError(msg)
-
-    version_entry = next(
-        (v for v in model_spec.get("versions", []) if v["version"] == version),
-        None,
-    )
-    if not version_entry:
-        msg = f"Version {version} not found in model spec."
-        raise ValueError(msg)
-
-    tag = version_entry.get("tag", version)
 
     base_url = f"https://raw.githubusercontent.com/{repo}/{tag}/{mdf_directory}"
     return [f"{base_url}/{file}" for file in mdf_files]

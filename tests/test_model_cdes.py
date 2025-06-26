@@ -7,6 +7,7 @@ import pytest
 import yaml
 from bento_mdf.mdf import MDFReader
 
+from bento_mdb_updates.datatypes import ModelSpec
 from bento_mdb_updates.model_cdes import (
     compare_model_specs_to_mdb,
     get_yaml_files_from_spec,
@@ -56,7 +57,7 @@ class TestGetYamlFilesFromSpec:
         """Test getting YAML files from model spec."""
         test_model, test_version = "TCDS", "1.0.0"
         test_spec = TEST_MODEL_SPEC[test_model]
-        actual = get_yaml_files_from_spec(test_spec, test_version)
+        actual = get_yaml_files_from_spec(test_spec, test_model, test_version)
         base_url = (
             "https://raw.githubusercontent.com/"
             "CBIIT/test-cds-model/1.0.0-release/model-desc/"
@@ -68,7 +69,7 @@ class TestGetYamlFilesFromSpec:
         """Test getting YAML files from model spec for latest version."""
         test_model = "TCCDI"
         test_spec = TEST_MODEL_SPEC[test_model]
-        actual = get_yaml_files_from_spec(test_spec)
+        actual = get_yaml_files_from_spec(test_spec, test_model)
         base_url = (
             "https://raw.githubusercontent.com/CBIIT/test-ccdi-model/2.0.0/model-desc/"
         )
@@ -79,11 +80,37 @@ class TestGetYamlFilesFromSpec:
         """Test getting YAML files from model spec without a tag."""
         test_model = "TCCDI"
         test_spec = TEST_MODEL_SPEC[test_model]
-        actual = get_yaml_files_from_spec(test_spec, "0.1.0")
+        actual = get_yaml_files_from_spec(test_spec, test_model, "0.1.0")
         base_url = (
             "https://raw.githubusercontent.com/CBIIT/test-ccdi-model/0.1.0/model-desc/"
         )
         expected = [base_url + str(f) for f in test_spec["mdf_files"]]
+        assert_equal(actual, expected)
+
+    def test_get_yaml_files_from_spec_prerelease(self) -> None:
+        """Test getting YAML files from model spec for prerelease version."""
+        test_model = "TEST"
+        test_spec = ModelSpec(
+            {
+                "repository": "test-model",
+                "mdf_directory": "model-desc",
+                "mdf_files": ["test-model.yml", "test-model-props.yml"],
+                "in_data_hub": True,
+                "versions": [
+                    {"version": "1.0.0"},
+                    {"version": "1.1.0"},
+                ],
+                "latest_version": "1.1.0",
+                "latest_prerelease_version": "1.2.0",
+                "latest_prerelease_commit": "abcd12304f69bd15672c4c380c562a7f0b40f06f",
+            },
+        )
+        actual = get_yaml_files_from_spec(test_spec, test_model, "1.1.0-abcd123")
+        base_url = "https://raw.githubusercontent.com"
+        expected = [
+            f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.2.0/test-model.yml",
+            f"{base_url}/crdc-datahub-models/dev2/cache/TEST/1.2.0/test-model-props.yml",
+        ]
         assert_equal(actual, expected)
 
 

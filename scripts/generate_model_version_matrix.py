@@ -45,6 +45,7 @@ def model_matrix_flow(
 ) -> None:
     """Generate matrix with models/versions to be added to MDB."""
     model_specs = load_model_specs_from_yaml(Path(model_specs_yaml))
+
     if mdb_id not in VALID_MDB_IDS:
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
@@ -72,7 +73,11 @@ def model_matrix_flow(
             {
                 "model": model,
                 "version": version,
-                "mdf_files": get_yaml_files_from_spec(model_specs[model], version),
+                "mdf_files": get_yaml_files_from_spec(
+                    model_specs[model],
+                    model,
+                    version,
+                ),
             }
             for model, versions in models_to_update.items()
             for version in versions
