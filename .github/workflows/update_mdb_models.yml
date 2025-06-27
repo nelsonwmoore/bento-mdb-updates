@@ -57,30 +57,6 @@ on:
         required: false
         type: boolean
         default: false
-      model_changelog_path:
-        description: "Path to output model changelog file"
-        required: false
-        type: string
-      author:
-        description: "Author name for changes"
-        required: false
-        default: "GitHub Actions"
-        type: string
-      commit_sha:
-        description: "Commit SHA for reference"
-        required: false
-        default: ""
-        type: string
-      add_rollback:
-        description: "Add rollback statements to changelog"
-        required: false
-        type: boolean
-        default: false
-      latest_version:
-        description: "Is this the latest data model version?"
-        required: false
-        type: boolean
-        default: true
 
 jobs:
   determine-models:
@@ -334,10 +310,10 @@ jobs:
           --model_version "${{ matrix.version }}" \
           "${MDF_FILES_ARRAY[@]}" \
           --output_file_path "data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" \
-          --author "${{ github.event.inputs.author || 'GitHub Actions' }}" \
-          --_commit "${{ github.event.inputs.commit_sha || github.sha }}" \
-          --latest_version ${{ fromJson(github.event.inputs.latest_version || 'true') }} \
-          --add_rollback ${{ fromJson(github.event.inputs.add_rollback || 'false') }}
+          --author "GitHub Actions" \
+          --_commit "${{ github.sha }}" \
+          --latest_version ${{ fromJson('true') }} \
+          --add_rollback ${{ fromJson('false') }}
 
       - name: Get Model PVs and Synonyms
         run: |
@@ -364,8 +340,8 @@ jobs:
           make_model_cde_changelog \
           --model_handle "${{ matrix.model }}" \
           --model_version "${{ matrix.version }}" \
-          --author "${{ github.event.inputs.author || 'GitHub Actions' }}" \
-          --_commit "${{ github.event.inputs.commit_sha || github.sha }}"
+          --author "GitHub Actions" \
+          --_commit "${{ github.sha }}"
 
       - name: Commit Generated Files
         if: ${{ !fromJson(github.event.inputs.no_commit || 'false') }}
