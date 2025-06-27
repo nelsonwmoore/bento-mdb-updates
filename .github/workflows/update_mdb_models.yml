@@ -123,7 +123,7 @@ jobs:
           LOWER_MDB_URI="jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587"
 
           IS_AUTOMATIC="false"
-          if [ "${{ github.event_name }} " == "push" ]; then
+          if [ "${{ github.event_name }}" == "push" ]; then
             IS_AUTOMATIC="true"
           fi
 
@@ -223,7 +223,7 @@ jobs:
                   "mdb_user": $mdb_user,
                   "mdb_id": $mdb_id,
                   "model_specs_yaml": $model_specs_yaml,
-                  "datahub_only": $datahub_only,
+                  "datahub_only": $datahub_only
                 }')
               
               echo "Running Prefect deployment for lower tier with params: $LOWER_PARAMS"
@@ -292,10 +292,9 @@ jobs:
   generate-changelogs:
     needs: determine-models
     runs-on: ubuntu-latest
-    outputs:
-      changelog_files: ${{ steps.collect-changelogs.outputs.changelog_files }}
     strategy:
       matrix: ${{ fromJson(needs.determine-models.outputs.affected_models) }}
+      fail-fast: false
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -321,67 +320,55 @@ jobs:
         run: |
           set -e
 
-          MDF_FILES_OPTIONS=""
+          MDF_FILES_ARRAY=()
           if [ -n "${{ toJson(matrix.mdf_files) }}" ] && [ "${{ toJson(matrix.mdf_files) }}" != "null" ] && [ "${{ toJson(matrix.mdf_files) }}" != "[]" ]; then
             for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
-              MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
+              MDF_FILES_ARRAY+=("--mdf_files" "$file")
             done
           fi
 
           mkdir -p data/output/model_changelogs/${{ matrix.model }}/
 
           make_model_changelog \
-          --model_handle="${{ matrix.model }}" \
-          --model_version="${{ matrix.version }}" \
-          $MDF_FILES_OPTIONS \
-          --output_file_path="data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" \
-          --author="GitHub Actions" \
-          --_commit="${{ github.sha }}" \
-          --latest_version=True
+          --model_handle "${{ matrix.model }}" \
+          --model_version "${{ matrix.version }}" \
+          "${MDF_FILES_ARRAY[@]}" \
+          --output_file_path "data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml" \
+          --author "${{ github.event.inputs.author || 'GitHub Actions' }}" \
+          --_commit "${{ github.event.inputs.commit_sha || github.sha }}" \
+          --latest_version ${{ fromJson(github.event.inputs.latest_version || 'true') }} \
+          --add_rollback ${{ fromJson(github.event.inputs.add_rollback || 'false') }}
 
       - name: Get Model PVs and Synonyms
         run: |
           set -e
 
-          MDF_FILES_OPTIONS=""
+          MDF_FILES_ARRAY=()
           if [ -n "${{ toJson(matrix.mdf_files) }}" ] && [ "${{ toJson(matrix.mdf_files) }}" != "null" ] && [ "${{ toJson(matrix.mdf_files) }}" != "[]" ]; then
             for file in $(echo '${{ toJson(matrix.mdf_files) }}' | jq -r '.[]'); do
-              MDF_FILES_OPTIONS+=" --mdf_files \"$file\""
+              MDF_FILES_ARRAY+=("--mdf_files" "$file")
             done
           fi
 
           mkdir -p data/output/model_cde_pvs/${{ matrix.model }}/
 
           get_pvs_and_synonyms \
-          --model_handle="${{ matrix.model }}" \
-          --model_version="${{ matrix.version }}" \
-          $MDF_FILES_OPTIONS \
+          --model_handle "${{ matrix.model }}" \
+          --model_version "${{ matrix.version }}" \
+          "${MDF_FILES_ARRAY[@]}"
 
       - name: Make Model CDE Changelog
         run: |
-          make_model_cde_changelog \
-          --model_handle="${{ matrix.model }}" \
-          --model_version="${{ matrix.version }}"
+          set -e
 
-      - name: Collect Changelog Files
-        id: collect-changelogs
-        run : |
-          CHANGELOG_FILE="data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_changelog_${{ matrix.version }}.xml"
-          CDE_CHANGELOG_FILE="data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml"
-          # Check if files exist
-          CHANGELOG_FILES="[]"
-          if [ -f "$CHANGELOG_FILE" ] && [ -f "$CDE_CHANGELOG_FILE" ]; then
-            CHANGELOG_FILES="[\"$CHANGELOG_FILE\", \"$CDE_CHANGELOG_FILE\"]"
-          elif [ -f "$CHANGELOG_FILE" ]; then
-            CHANGELOG_FILES="[\"$CHANGELOG_FILE\"]" 
-          elif [ -f "$CDE_CHANGELOG_FILE" ]; then
-            CHANGELOG_FILES="[\"$CDE_CHANGELOG_FILE\"]"
-          fi
-          
-          echo "changelog_files=$CHANGELOG_FILES" >> $GITHUB_OUTPUT
-          echo "Generated changelog files: $CHANGELOG_FILES"
+          make_model_cde_changelog \
+          --model_handle "${{ matrix.model }}" \
+          --model_version "${{ matrix.version }}" \
+          --author "${{ github.event.inputs.author || 'GitHub Actions' }}" \
+          --_commit "${{ github.event.inputs.commit_sha || github.sha }}"
 
       - name: Commit Generated Files
+        if: ${{ !fromJson(github.event.inputs.no_commit || 'false') }}
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
@@ -405,29 +392,87 @@ jobs:
             echo "No changes to commit"
           fi
 
-  collect-all-changelogs:
-    needs: [generate-changelogs]
+  collect-changelogs:
+    needs: [determine-models, generate-changelogs]
     runs-on: ubuntu-latest
     outputs:
-      all_changelog_files: ${{ steps.collect-all.outputs.all_changelog_files }}
-    steps:
-      - name: Collect All Changelog Files
-        id: collect-all
-        run: |
-          ALL_CHANGELOGS='${{ needs.generate-changelogs.outputs.changelog_files }}'
-          # Ensure it's a valid JSON array
-          if [ -z "$ALL_CHANGELOGS" ] || [ "$ALL_CHANGELOGS" == "null" ]; then
-            ALL_CHANGELOGS="[]"
-          fi
-          echo "all_changelog_files=$ALL_CHANGELOGS" >> $GITHUB_OUTPUT
-          echo "All changelog files: $ALL_CHANGELOGS"
+      changelog_files_upper: ${{ steps.collect-changelogs.outputs.changelog_files_upper }}
+      changelog_files_lower: ${{ steps.collect-changelogs.outputs.changelog_files_lower }}
 
-  update-mdb-and-dh:
-    needs: [determine-models, collect-all-changelogs]
-    if: needs.determine-models.outputs.affected_models != '{}' && needs.determine-models.outputs.affected_models != '[]' && needs.collect-all-changelogs.outputs.all_changelog_files != '[]'
+    steps:
+      - name: Collect All Changelog Files by Tier
+        id: collect-changelogs
+        run: |
+          UPPER_MATRIX='${{ needs.determine-models.outputs.affected_models_upper }}'
+          LOWER_MATRIX='${{ needs.determine-models.outputs.affected_models_lower }}'
+          UPPER_CHANGELOGS="[]"
+          LOWER_CHANGELOGS="[]"
+          if [ "$UPPER_MATRIX" != "" ] && [ "$UPPER_MATRIX" != "null" ] && [ "$UPPER_MATRIX" != "{\"include\": []}" ]; then
+            MODEL_COUNT=$(echo "$UPPER_MATRIX" | jq '.include | length')
+            
+            if [ "$MODEL_COUNT" -gt 0 ]; then
+              UPPER_FILES="[]"
+              
+              while IFS= read -r model_version; do
+                IFS=':' read -r model version <<< "$model_version"
+                CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_changelog_${version}.xml"
+                CDE_CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_${version}_cde_changelog.xml"
+                
+                UPPER_FILES=$(echo "$UPPER_FILES" | jq --arg cf "$CHANGELOG_FILE" --arg cdf "$CDE_CHANGELOG_FILE" '. + [$cf, $cdf]')
+              done < <(echo "$UPPER_MATRIX" | jq -r '.include[] | "\(.model):\(.version)"')
+              
+              UPPER_CHANGELOGS="$UPPER_FILES"
+            fi
+          fi
+          
+          if [ "$LOWER_MATRIX" != "" ] && [ "$LOWER_MATRIX" != "null" ] && [ "$LOWER_MATRIX" != "{\"include\": []}" ]; then
+            MODEL_COUNT=$(echo "$LOWER_MATRIX" | jq '.include | length')
+            
+            if [ "$MODEL_COUNT" -gt 0 ]; then
+              LOWER_FILES="[]"
+              while IFS= read -r model_version; do
+                IFS=':' read -r model version <<< "$model_version"
+                CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_changelog_${version}.xml"
+                CDE_CHANGELOG_FILE="data/output/model_changelogs/${model}/${model}_${version}_cde_changelog.xml"
+                
+                LOWER_FILES=$(echo "$LOWER_FILES" | jq --arg cf "$CHANGELOG_FILE" --arg cdf "$CDE_CHANGELOG_FILE" '. + [$cf, $cdf]')
+              done < <(echo "$LOWER_MATRIX" | jq -r '.include[] | "\(.model):\(.version)"')
+              
+              LOWER_CHANGELOGS="$LOWER_FILES"
+            fi
+          fi
+          
+          echo "changelog_files_upper=$UPPER_CHANGELOGS" >> $GITHUB_OUTPUT
+          echo "changelog_files_lower=$LOWER_CHANGELOGS" >> $GITHUB_OUTPUT          
+          echo "Upper tier changelog files: $UPPER_CHANGELOGS"
+          echo "Lower tier changelog files: $LOWER_CHANGELOGS"
+
+  update-mdb-nightly-and-dh-lower:
+    needs: [determine-models, collect-changelogs]
+    if: ${{ needs.collect-changelogs.outputs.changelog_files_lower != '' && needs.collect-changelogs.outputs.changelog_files_lower != '[]' }}
     uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      changelog_files: ${{ needs.collect-all-changelogs.outputs.all_changelog_files }}
-      affected_models: ${{ needs.determine-models.outputs.affected_models }}
-      mdb_id: # TODO: designate mdb id (either "og-mdb-dev" or "og-mdb-nightly" or given)
+      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587
+      mdb_user: neo4j
+      mdb_id: og-mdb-nightly
+      dh_tier: lower
+      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files_lower }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
+
+  update-mdb-dev-and-dh-upper:
+    needs: [determine-models, collect-changelogs]
+    if: ${{ needs.collect-changelogs.outputs.changelog_files_upper != '' && needs.collect-changelogs.outputs.changelog_files_upper != '[]' }}
+    uses: ./.github/workflows/update_mdb_and_dh.yml
+    secrets: inherit
+    with:
+      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687
+      mdb_user: neo4j
+      mdb_id: og-mdb-dev
+      dh_tier: upper
+      changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files_upper }}
+      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
+      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
+      log_level: ${{ github.event.inputs.log_level || 'info' }}
