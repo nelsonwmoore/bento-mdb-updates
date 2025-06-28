@@ -80,7 +80,7 @@ CDS:
   - version: 8.0.1
     tag: 8.0.1-GC_Release
   latest_version: 8.0.1
-  latest_prerelease_commit: 6aba874f98af5e5382661e2b8a6a2763320c3118
+  latest_prerelease_commit: 76a5b2dd5154e5a09f1e5e1d9670dcc598a69ea9
   latest_prerelease_version: 8.0.2
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
@@ -183,4 +183,3 @@ mCODE:
   latest_version: 3.0.0
   latest_prerelease_commit: null
   latest_prerelease_version: null
-# TESTING MODEL UPDATES WORKFLOW 1
