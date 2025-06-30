@@ -399,19 +399,25 @@ jobs:
 
       - name: Move files to proper structure
         run: |
+          echo "Downloaded artifacts:"
+          ls -la
+
           for artifact_dir in changelog-*; do
             if [ -d "$artifact_dir" ]; then
               echo "Processing $artifact_dir"
               cp -r "$artifact_dir"/* .
+              rm -rf "$artifact_dir"
             fi
           done
+          
+          echo "Final structure:"
+          find data -type f -name "*.xml" -o -name "*.yml" | head -20
 
       - name: Commit Generated Files
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           
-          # Add all generated files
           git add data/output/model_changelogs/
           git add data/output/model_cde_pvs/
           
@@ -483,10 +489,10 @@ jobs:
             fi
           fi
           
-          echo "changelog_files_upper=$UPPER_CHANGELOGS" >> $GITHUB_OUTPUT
-          echo "changelog_files_lower=$LOWER_CHANGELOGS" >> $GITHUB_OUTPUT          
-          echo "Upper tier changelog files: $UPPER_CHANGELOGS"
-          echo "Lower tier changelog files: $LOWER_CHANGELOGS"
+          echo "changelog_files_upper=$(echo $UPPER_CHANGELOGS | jq -c .)" >> $GITHUB_OUTPUT
+          echo "changelog_files_lower=$(echo $LOWER_CHANGELOGS | jq -c .)" >> $GITHUB_OUTPUT          
+          echo "Upper tier changelog files: $(echo $UPPER_CHANGELOGS | jq .)"
+          echo "Lower tier changelog files: $(echo $LOWER_CHANGELOGS | jq .)"
 
   update-mdb-nightly-and-dh-lower:
     needs: [determine-models, collect-changelogs]
