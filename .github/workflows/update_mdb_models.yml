@@ -281,6 +281,7 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.determine-models.outputs.affected_models) }}
       fail-fast: false
+    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -363,6 +364,21 @@ jobs:
             data/output/model_changelogs/${{ matrix.model }}/${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml
           retention-days: 1
 
+      - name: Report Status
+        if: always()
+        run: |
+          echo "## Changelog Generation Status for ${{ matrix.model }} v${{ matrix.version }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ **Success**: Generated all changelog files" >> $GITHUB_STEP_SUMMARY
+            echo "- Model changelog: ${{ matrix.model }}_changelog_${{ matrix.version }}.xml" >> $GITHUB_STEP_SUMMARY
+            echo "- CDE PVs: ${{ matrix.model }}_${{ matrix.version }}_cdes.yml" >> $GITHUB_STEP_SUMMARY
+            echo "- CDE changelog: ${{ matrix.model }}_${{ matrix.version }}_cde_changelog.xml" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Failed**: Error generating changelog files" >> $GITHUB_STEP_SUMMARY
+            echo "Please check the logs for model ${{ matrix.model }} version ${{ matrix.version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
   commit-all-changelogs:
     needs: [determine-models, generate-changelogs]
     runs-on: ubuntu-latest
@@ -383,13 +399,9 @@ jobs:
 
       - name: Move files to proper structure
         run: |
-          # Each artifact is downloaded to its own folder (changelog-model-version/)
-          # We need to move the files to the proper data/output/ structure
           for artifact_dir in changelog-*; do
             if [ -d "$artifact_dir" ]; then
               echo "Processing $artifact_dir"
-              # Move all files from the artifact directory to current directory
-              # This preserves the data/output/ path structure from the upload
               cp -r "$artifact_dir"/* .
             fi
           done
