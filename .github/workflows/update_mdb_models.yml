@@ -399,19 +399,24 @@ jobs:
 
       - name: Move files to proper structure
         run: |
-          echo "Downloaded artifacts:"
-          ls -la
-
           for artifact_dir in changelog-*; do
             if [ -d "$artifact_dir" ]; then
               echo "Processing $artifact_dir"
-              cp -r "$artifact_dir"/* .
+              
+              if [ -d "$artifact_dir/model_changelogs" ]; then
+                cp -rn "$artifact_dir/model_changelogs" data/output/
+              fi
+              
+              if [ -d "$artifact_dir/model_cde_pvs" ]; then
+                cp -rn "$artifact_dir/model_cde_pvs" data/output/
+              fi
+              
               rm -rf "$artifact_dir"
             fi
           done
           
           echo "Final structure:"
-          find data -type f -name "*.xml" -o -name "*.yml" | head -20
+          find data/output -type f \( -name "*.xml" -o -name "*.yml" \) | head -20
 
       - name: Commit Generated Files
         run: |
