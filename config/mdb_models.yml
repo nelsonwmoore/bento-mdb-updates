@@ -143,8 +143,8 @@ ICDC:
   repository: CBIIT/icdc-model-tool
   mdf_directory: model-desc
   mdf_files:
-  - icdc-model.yaml
-  - icdc-model-props.yaml
+  - icdc-model.yml
+  - icdc-model-props.yml
   in_data_hub: true
   versions:
   - version: 1.0.0
