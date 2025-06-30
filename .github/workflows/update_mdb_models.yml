@@ -166,6 +166,9 @@ jobs:
               )
               echo "Upper tier run ID: $UPPER_RUN_ID"
 
+              echo "Waiting for logs to be available..."
+              sleep 10
+
               UPPER_LOG_FILE="${UPPER_RUN_ID}_run.log"
               prefect flow-run logs "$UPPER_RUN_ID" > "$UPPER_LOG_FILE"
               
@@ -217,6 +220,9 @@ jobs:
                 | head -n1
               )
               echo "Lower tier run ID: $LOWER_RUN_ID"
+
+              echo "Waiting for logs to be available..."
+              sleep 10
 
               LOWER_LOG_FILE="${LOWER_RUN_ID}_run.log"
               prefect flow-run logs "$LOWER_RUN_ID" > "$LOWER_LOG_FILE"
