@@ -256,10 +256,14 @@ jobs:
 
           COMBINED_INCLUDE=$(jq -s '.[0].include + .[1].include | unique_by(.model + .version)' matrix_upper.json matrix_lower.json)
           COMBINED_MATRIX="{\"include\": $COMBINED_INCLUDE}"
+
+          COMBINED_MATRIX_COMPACT=$(echo "$COMBINED_MATRIX" | jq -c .)
+          UPPER_MATRIX_COMPACT=$(echo "$UPPER_MATRIX" | jq -c .)
+          LOWER_MATRIX_COMPACT=$(echo "$LOWER_MATRIX" | jq -c .)
           
-          echo "model_matrix=$COMBINED_MATRIX" >> $GITHUB_OUTPUT
-          echo "model_matrix_upper=$UPPER_MATRIX" >> $GITHUB_OUTPUT
-          echo "model_matrix_lower=$LOWER_MATRIX" >> $GITHUB_OUTPUT
+          echo "model_matrix=$COMBINED_MATRIX_COMPACT" >> $GITHUB_OUTPUT
+          echo "model_matrix_upper=$UPPER_MATRIX_COMPACT" >> $GITHUB_OUTPUT
+          echo "model_matrix_lower=$LOWER_MATRIX_COMPACT" >> $GITHUB_OUTPUT
           
           echo "Combined matrix: $COMBINED_MATRIX"
           echo "Upper tier matrix: $UPPER_MATRIX"
