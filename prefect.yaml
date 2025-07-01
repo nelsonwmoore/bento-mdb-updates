@@ -63,6 +63,28 @@ deployments:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-queue
     job_variables: {}
+- name: liquibase-update-upper
+  version:
+  tags: []
+  concurrency_limit:
+  description: Update the Neo4j database (upper tier).
+  entrypoint: scripts/update_mdb.py:liquibase_update_flow
+  parameters: {}
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: liquibase-upper-queue
+    job_variables: {}
+- name: liquibase-update-lower
+  version:
+  tags: []
+  concurrency_limit:
+  description: Update the Neo4j database (lower tier).
+  entrypoint: scripts/update_mdb.py:liquibase_update_flow
+  parameters: {}
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name: liquibase-lower-queue
+    job_variables: {}
 - name: update-mdb-and-dh
   version:
   tags: []

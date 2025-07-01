@@ -20,8 +20,9 @@ def update_mdb_and_dh_flow(  # noqa: PLR0913
     """Orchestration script to update MDB and Data Hub sequentially."""
     logger = get_run_logger()
     logger.info("Running update-mdb-and-dh flow...")
+    liq_update_deployment = f"liquibase-update/liquibase-update-{tier}"
     run_deployment(
-        name="liquibase-update/liquibase-update",
+        name=liq_update_deployment,
         parameters={
             "mdb_uri": mdb_uri,
             "mdb_user": mdb_user,
