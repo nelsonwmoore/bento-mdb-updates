@@ -80,8 +80,10 @@ jobs:
           echo "Processing the following changelog files:"
           echo '${{ inputs.changelog_files }}' | jq -r '.[]'
           
+          RUN_IDS=()
+
           for file in $(echo '${{ inputs.changelog_files }}' | jq -r '.[]'); do
-            echo "Processing $file"
+            echo "Queueing $file"
 
             if [ ! -f "$file" ]; then
               echo "Warning: Changelog file $file does not exist, skipping"
@@ -108,8 +110,35 @@ jobs:
               "no_commit": $no_commit
             }')
 
-            prefect deployment run update-mdb-and-dh/update-mdb-and-dh \
-              --params "$PARAMS" \
-              --watch \
-              --watch-interval 30
+            OUTPUT=$(prefect deployment run update-mdb-and-dh/update-mdb-and-dh \
+              --params "$PARAMS" 2>&1)
+
+            RUN_ID=$(echo "$OUTPUT" | grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" | head -n1)
+
+            if [ -n "$RUN_ID" ]; then
+              echo "Created flow run $RUN_ID for $file"
+              RUN_IDS+=("$RUN_ID:$file")
+            else
+              echo "Failed to create flow run for $file"
+            fi
+          done
+
+          echo "Monitoring ${#RUN_IDS[@]} flow runs..."
+
+          for run_info in "${RUN_IDS[@]}"; do
+            IFS=':' read -r run_id file <<< "$run_info"
+            echo "Watching flow run $run_id for $file"
+            
+            # Use the same watch approach as the term update workflow
+            prefect flow-run watch "$run_id" \
+              --interval 30 || {
+                # If watch fails, check if it actually completed
+                STATE=$(prefect flow-run inspect "$run_id" | jq -r '.state_name // empty')
+                if [ "$STATE" = "Completed" ]; then
+                  echo "Flow run completed successfully"
+                else
+                  echo "Flow run failed or watch error occurred"
+                  exit 1
+                fi
+              }
           done
