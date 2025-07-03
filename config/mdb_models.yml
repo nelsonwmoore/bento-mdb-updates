@@ -33,7 +33,7 @@ CCDI:
   - version: 2.1.0
     tag: 2.1.0
   latest_version: 2.1.0
-  latest_prerelease_commit: 04f69bd15672c4c380c562a7f0b40f06fce651ec
+  latest_prerelease_commit: 0215a1a6181a53216afa6cc3a6d558d43ea11bb4
   latest_prerelease_version: 2.1.0
 CDS:
   repository: CBIIT/cds-model
@@ -185,4 +185,3 @@ mCODE:
   latest_version: 3.0.0
   latest_prerelease_commit: null
   latest_prerelease_version: null
-# TESTING 202507012227
