@@ -34,6 +34,23 @@ def make_matrix_output_more_visible(matrix: dict) -> None:
     print(f"MATRIX_JSON:{result_json}")  # noqa: T201
 
 
+def verify_mdb_connection(mdb: MDB) -> None:
+    """
+    Validate that MDB connection is working and has models.
+
+    Raises:
+        ConnectionError: if connection fails.
+        RuntimeError: if MDB empty when it shouldn't be.
+    """
+    if mdb.driver is None:
+        msg = f"Failed to connect to MDB: {mdb.uri}"
+        raise ConnectionError(msg)
+    if not hasattr(mdb, "models") or mdb.models is None or len(mdb.models) == 0:
+        msg = f"No model information could be retrieved from MDB: {mdb.uri}"
+        raise RuntimeError(msg)
+    print(f"MDB connection validated: {len(mdb.models)} models found in database")
+
+
 @flow(name="generate-model-version-matrix", log_prints=True)
 def model_matrix_flow(
     mdb_uri: str,
@@ -60,6 +77,7 @@ def model_matrix_flow(
         user=mdb_user,
         password=password,
     )
+    verify_mdb_connection(mdb)
 
     include_prerelease = mdb_id in MDB_IDS_WITH_PRERELEASES
     models_to_update = compare_model_specs_to_mdb(
