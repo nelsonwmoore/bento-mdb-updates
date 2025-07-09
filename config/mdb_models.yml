@@ -33,7 +33,7 @@ CCDI:
   - version: 2.1.0
     tag: 2.1.0
   latest_version: 2.1.0
-  latest_prerelease_commit: 9f42edcb2975ad0d8b88a4da5584330a4e4038ea
+  latest_prerelease_commit: 5942323e9d2f6cc9ab6e9ce1151cb1f0dbe164aa
   latest_prerelease_version: 2.1.0
 CDS:
   repository: CBIIT/cds-model
@@ -81,7 +81,9 @@ CDS:
     tag: 8.0.1-GC_Release
   - version: 8.0.2
     tag: 8.0.2-GC_Release
-  latest_version: 8.0.2
+  - version: 8.0.3
+    tag: 8.0.3-GC_Release
+  latest_version: 8.0.3
   latest_prerelease_commit: fb79b7817a4905e502a6c59ab47a59d28f863989
   latest_prerelease_version: 8.0.3
 CRDCSubmission:
