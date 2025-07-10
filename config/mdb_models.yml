@@ -14,7 +14,9 @@ C3DC:
     tag: 2.0.1
   - version: 2.1.0
     tag: 2.1.0
-  latest_version: 2.1.0
+  - version: 3.0.0
+    tag: 3.0.0
+  latest_version: 3.0.0
   latest_prerelease_commit: null
   latest_prerelease_version: null
 CCDI:
@@ -32,9 +34,11 @@ CCDI:
     tag: 2.0.0
   - version: 2.1.0
     tag: 2.1.0
-  latest_version: 2.1.0
-  latest_prerelease_commit: c2a18eb245ac3a1bbd8facee741a9b5d77454886
-  latest_prerelease_version: 2.1.0
+  - version: 3.0.0
+    tag: 3.0.0
+  latest_version: 3.0.0
+  latest_prerelease_commit: 7c3330ba192359bcd3a0c770208d4ce53b15a9b4
+  latest_prerelease_version: 3.0.0
 CDS:
   repository: CBIIT/cds-model
   mdf_directory: model-desc
@@ -114,9 +118,11 @@ CTDC:
     tag: 1.2.0
   - version: 1.3.0
     tag: 1.3.0
-  latest_version: 1.3.0
-  latest_prerelease_commit: d84622a53843fcad09fc7988606dd0179ece6201
-  latest_prerelease_version: 1.3.0
+  - version: 1.4.0
+    tag: 1.4.0
+  latest_version: 1.4.0
+  latest_prerelease_commit: 4ffea97ce54fd72e9a6bcd6ff8d1a03195d3f15e
+  latest_prerelease_version: 1.4.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
