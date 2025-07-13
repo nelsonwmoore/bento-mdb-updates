@@ -103,6 +103,12 @@ def mdb_import_flow(
     endpoint: str = DEFAULT_S3_ENDPOINT,
 ) -> None:
     """Import MDB data from S3 into Neo4j."""
-    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user, writeable=True)
+    mdb = init_mdb_connection(
+        mdb_id,
+        mdb_uri,
+        mdb_user,
+        writeable=True,
+        allow_empty=True,
+    )
     s3_url = build_s3_url(bucket, key, endpoint)
     import_mdb_from_s3(mdb=mdb, s3_url=s3_url)
