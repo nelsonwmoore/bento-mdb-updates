@@ -54,12 +54,10 @@ def verify_mdb_connection(mdb: MDB, *, allow_empty: bool = False) -> None:
     if mdb.driver is None:
         msg = f"Failed to connect to MDB: {mdb.uri}"
         raise ConnectionError(msg)
-    if (
-        not allow_empty
-        or not hasattr(mdb, "models")
-        or mdb.models is None
-        or len(mdb.models) == 0
-    ):
-        msg = f"No model information could be retrieved from MDB: {mdb.uri}"
-        raise RuntimeError(msg)
-    print(f"MDB connection validated: {len(mdb.models)} models found in database")
+    if not allow_empty:
+        if not hasattr(mdb, "models") or mdb.models is None or len(mdb.models) == 0:
+            msg = f"No model information could be retrieved from MDB: {mdb.uri}"
+            raise RuntimeError(msg)
+        print(f"MDB connection validated: {len(mdb.models)} models found in database")
+    else:
+        print("MDB connection validated: empty database allowed")
