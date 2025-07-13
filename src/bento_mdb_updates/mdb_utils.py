@@ -55,7 +55,7 @@ def verify_mdb_connection(mdb: MDB, *, allow_empty: bool = False) -> None:
         msg = f"Failed to connect to MDB: {mdb.uri}"
         raise ConnectionError(msg)
     if (
-        (not allow_empty and not hasattr(mdb, "models"))
+        (not allow_empty or not hasattr(mdb, "models"))
         or mdb.models is None
         or len(mdb.models) == 0
     ):
