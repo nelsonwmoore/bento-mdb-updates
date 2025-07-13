@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from prefect import flow, get_run_logger, task
+from prefect.cache_policies import NO_CACHE
 from zoneinfo import ZoneInfo
 
 from bento_mdb_updates.mdb_utils import init_mdb_connection
@@ -33,7 +34,7 @@ def build_s3_url(bucket: str, key: str, endpoint: str = DEFAULT_S3_ENDPOINT) -> 
     return url
 
 
-@task(name="Export MDB to S3")
+@task(name="Export MDB to S3", cache_policy=NO_CACHE)
 def export_mdb_to_s3(mdb: MDB, s3_url: str) -> None:
     """Export MDB to graphml file in S3."""
     logger = get_run_logger()
@@ -53,7 +54,7 @@ def export_mdb_to_s3(mdb: MDB, s3_url: str) -> None:
     raise RuntimeError(export_fail_msg)
 
 
-@task(name="Import MDB from S3")
+@task(name="Import MDB from S3", cache_policy=NO_CACHE)
 def import_mdb_from_s3(mdb: WriteableMDB, s3_url: str) -> None:
     """Import MDB from graphml file in S3."""
     logger = get_run_logger()
