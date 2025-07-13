@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
-from bento_meta.mdb.mdb import MDB
 from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
@@ -19,8 +18,8 @@ from bento_mdb_updates.clients import CADSRClient, NCItClient
 from bento_mdb_updates.constants import (
     GITHUB_TOKEN_SECRET,
     MDB_UPDATES_GH_REPO,
-    VALID_MDB_IDS,
 )
+from bento_mdb_updates.mdb_utils import init_mdb_connection
 from bento_mdb_updates.model_cdes import (
     add_ncit_synonyms_to_model_cde_spec,
     get_cdes_from_mdb,
@@ -52,22 +51,7 @@ def get_current_mdb_cdes(
     mdb_id: str,
 ) -> list[MDBCDESpec]:
     """Get current MDB CDEs."""
-    if mdb_id not in VALID_MDB_IDS:
-        msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
-        raise ValueError(msg)
-    pwd_secret_name = mdb_id + "-pwd"
-    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
-    if mdb_id.startswith("og-mdb"):
-        password = ""
-    if mdb_uri.startswith("jdbc:neo4j:"):
-        mdb_uri = mdb_uri.replace("jdbc:neo4j:", "")
-
-    # Get current MDB CDE Pvs & Synonyms
-    mdb = MDB(
-        uri=mdb_uri,
-        user=mdb_user,
-        password=password,
-    )
+    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user)
     return get_cdes_from_mdb(mdb)
 
 

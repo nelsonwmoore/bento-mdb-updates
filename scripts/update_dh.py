@@ -3,7 +3,6 @@
 import json
 
 import click
-from bento_meta.mdb.mdb import MDB
 from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
@@ -11,9 +10,9 @@ from prefect.blocks.system import Secret
 from bento_mdb_updates.constants import (
     DH_TERMS_GH_REPO,
     GITHUB_TOKEN_SECRET,
-    VALID_MDB_IDS,
     VALID_TIERS,
 )
+from bento_mdb_updates.mdb_utils import init_mdb_connection
 
 QUERY = (
     "MATCH (cde:term) WHERE toLower(cde.origin_name) CONTAINS 'cadsr' WITH cde "
@@ -60,21 +59,7 @@ def get_pvs_json(
     mdb_id: str,
 ) -> str:
     """Get JSON from MDB with CDE PVs and Synonyms in Data Hub format."""
-    if mdb_id not in VALID_MDB_IDS:
-        msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
-        raise ValueError(msg)
-    pwd_secret_name = mdb_id + "-pwd"
-    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
-    if mdb_id.startswith("og-mdb"):
-        password = ""
-    if mdb_uri.startswith("jdbc:neo4j:"):
-        mdb_uri = mdb_uri.replace("jdbc:neo4j:", "")
-
-    mdb = MDB(
-        uri=mdb_uri,
-        user=mdb_user,
-        password=password,
-    )
+    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user)
     result = mdb.get_with_statement(QUERY)
     return json.dumps(result, indent=2)
 

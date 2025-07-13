@@ -7,11 +7,10 @@ import json
 from pathlib import Path
 
 import click
-from bento_meta.mdb import MDB
 from prefect import flow
-from prefect.blocks.system import Secret
 
-from bento_mdb_updates.constants import MDB_IDS_WITH_PRERELEASES, VALID_MDB_IDS
+from bento_mdb_updates.constants import MDB_IDS_WITH_PRERELEASES
+from bento_mdb_updates.mdb_utils import init_mdb_connection
 from bento_mdb_updates.model_cdes import (
     compare_model_specs_to_mdb,
     get_yaml_files_from_spec,
@@ -34,23 +33,6 @@ def make_matrix_output_more_visible(matrix: dict) -> None:
     print(f"MATRIX_JSON:{result_json}")  # noqa: T201
 
 
-def verify_mdb_connection(mdb: MDB) -> None:
-    """
-    Validate that MDB connection is working and has models.
-
-    Raises:
-        ConnectionError: if connection fails.
-        RuntimeError: if MDB empty when it shouldn't be.
-    """
-    if mdb.driver is None:
-        msg = f"Failed to connect to MDB: {mdb.uri}"
-        raise ConnectionError(msg)
-    if not hasattr(mdb, "models") or mdb.models is None or len(mdb.models) == 0:
-        msg = f"No model information could be retrieved from MDB: {mdb.uri}"
-        raise RuntimeError(msg)
-    print(f"MDB connection validated: {len(mdb.models)} models found in database")
-
-
 @flow(name="generate-model-version-matrix", log_prints=True)
 def model_matrix_flow(
     mdb_uri: str,
@@ -63,21 +45,7 @@ def model_matrix_flow(
     """Generate matrix with models/versions to be added to MDB."""
     model_specs = load_model_specs_from_yaml(Path(model_specs_yaml))
 
-    if mdb_id not in VALID_MDB_IDS:
-        msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
-        raise ValueError(msg)
-    pwd_secret_name = mdb_id + "-pwd"
-    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
-    if mdb_id.startswith("og-mdb"):
-        password = ""
-    if mdb_uri.startswith("jdbc:neo4j:"):
-        mdb_uri = mdb_uri.replace("jdbc:neo4j:", "")
-    mdb = MDB(
-        uri=mdb_uri,
-        user=mdb_user,
-        password=password,
-    )
-    verify_mdb_connection(mdb)
+    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user)
 
     include_prerelease = mdb_id in MDB_IDS_WITH_PRERELEASES
     models_to_update = compare_model_specs_to_mdb(
