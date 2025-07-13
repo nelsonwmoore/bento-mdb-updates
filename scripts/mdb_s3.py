@@ -40,7 +40,7 @@ def export_mdb_to_s3(mdb: MDB, s3_url: str) -> None:
     logger.info("Exporting MDB to S3: %s", s3_url)
     apoc_export_stmt = (
         f"CALL apoc.export.graphml.all('{s3_url}', "
-        "{{useTypes: true, storeNodeIds: true, batchSize: 10000}}) "
+        "{useTypes: true, storeNodeIds: true, batchSize: 10000}) "
         "YIELD nodes, relationships, properties "
         "RETURN nodes, relationships, properties"
     )
@@ -60,7 +60,7 @@ def import_mdb_from_s3(mdb: WriteableMDB, s3_url: str) -> None:
     logger.info("Importing MDB from S3: %s", s3_url)
     apoc_import_stmt = (
         f"CALL apoc.import.graphml('{s3_url}', "
-        "{{storeNodeIds: true, readLabels: true, batchSize: 10000}}) "
+        "{storeNodeIds: true, readLabels: true, batchSize: 10000}) "
         "YIELD nodes, relationships, properties "
         "RETURN nodes, relationships, properties"
     )
