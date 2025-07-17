@@ -92,8 +92,8 @@ CDS:
   - version: 8.0.3
     tag: 8.0.3-GC_Release
   latest_version: 8.0.3
-  latest_prerelease_commit: fb79b7817a4905e502a6c59ab47a59d28f863989
-  latest_prerelease_version: 8.0.3
+  latest_prerelease_commit: 1995e3e14d95a2aefa68d20fbab6dfcbefd8757a
+  latest_prerelease_version: 9.0.0
 CRDCSubmission:
   repository: pihltd/CRDCSearchModel
   mdf_directory: .
