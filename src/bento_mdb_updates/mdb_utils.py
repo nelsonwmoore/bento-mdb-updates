@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from bento_meta.mdb import MDB
 from bento_meta.mdb.writeable import WriteableMDB
-from prefect.blocks.system import Secret
-
+from prefect_aws.secrets_manager import AwsSecret
 from bento_mdb_updates.constants import VALID_MDB_IDS
 
 
@@ -21,23 +20,25 @@ def init_mdb_connection(
     if mdb_id not in VALID_MDB_IDS:
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
-    pwd_secret_name = "mdb-cloud-one-neo4j-creds" # mdb_id + "-pwd"
-    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
+    aws_secret_block = AwsSecret.load("mdb-cloud-one-neo4j-creds")
+    mdb_creds = aws_secret_block.read_secret()
+
+    
     if mdb_id.startswith("og-mdb"):
         password = ""
     if uri.startswith("jdbc:neo4j:"):
         uri = uri.replace("jdbc:neo4j:", "")
     if writeable:
         mdb = WriteableMDB(
-            uri=uri,
-            user=user,
-            password=password,
+            uri=mdb_creds['neo4j_bolt_uri'],
+            user=mdb_creds['neo4j_user'],
+            password=mdb_creds['neo4j_pass'],
         )
     else:
         mdb = MDB(
-            uri=uri,
-            user=user,
-            password=password,
+            uri=mdb_creds['neo4j_bolt_uri'],
+            user=mdb_creds['neo4j_user'],
+            password=mdb_creds['neo4j_pass'],
         )
     verify_mdb_connection(mdb, allow_empty=allow_empty)
     return mdb

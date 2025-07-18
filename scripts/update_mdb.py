@@ -12,7 +12,6 @@ from pathlib import Path
 
 import click
 from prefect import flow, get_run_logger, task
-from prefect.blocks.system import Secret
 from prefect_aws.secrets_manager import AwsSecret
 from prefect.logging.handlers import APILogHandler
 from pyliquibase import Pyliquibase
