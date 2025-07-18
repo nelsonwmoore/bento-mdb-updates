@@ -13,6 +13,7 @@ from pathlib import Path
 import click
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
+from prefect_aws.secrets_manager import AwsSecret
 from prefect.logging.handlers import APILogHandler
 from pyliquibase import Pyliquibase
 
@@ -49,12 +50,10 @@ def set_defaults_file(
             list(VALID_LOG_LEVELS.keys()),
         )
         log_level = "info"
-    pwd_secret_name = "mdb-cloud-one-neo4j-creds" # mdb_id + "-pwd"
-    uri = mdb_uri
-    user = mdb_user
-    password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
+    aws_secret_block = AwsSecret.load("mdb-cloud-one-neo4j-creds")
+    mdb_creds = aws_secret_block.read_secret()
     if mdb_id.startswith("og-mdb"):
-        password = ""
+        mdb_creds['neo4j_pass'] = ""
 
     # create liquibase log file
     log_file = tempfile.NamedTemporaryFile(suffix=".log", delete=False)  # noqa: SIM115
@@ -63,9 +62,9 @@ def set_defaults_file(
 
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
         f.write(f"changelogFile: {changelog_file}\n")
-        f.write(f"url: {uri}\n")
-        f.write(f"username: {user}\n")
-        f.write(f"password: {password}\n")
+        f.write(f"url: {mdb_creds['neo4j_bolt_uri']}\n")
+        f.write(f"username: {mdb_creds['neo4j_user']}\n")
+        f.write(f"password: {mdb_creds['neo4j_pass']}\n")
         f.write(f"classpath: {DRIVER_PATH}\n")
         f.write(f"driver: {DRIVER_NAME}\n")
         f.write(f"logLevel: {log_level}\n")

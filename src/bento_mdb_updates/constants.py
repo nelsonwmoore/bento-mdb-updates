@@ -23,7 +23,7 @@ VALID_LOG_LEVELS = {
     "severe": logging.CRITICAL,
     "off": logging.NOTSET,
 }
-GITHUB_TOKEN_SECRET = "mdb-updates-github-token"  # noqa: S105
+GITHUB_TOKEN_SECRET = "github-pat-to-202512"  # noqa: S105
 GITHUB_TOKEN_SECRET_NWM = "nwm-github-token"  # noqa: S105
 MDB_UPDATES_GH_REPO = "nelsonwmoore/bento-mdb-updates"
 DH_TERMS_GH_REPO = "CBIIT/crdc-datahub-terms"
