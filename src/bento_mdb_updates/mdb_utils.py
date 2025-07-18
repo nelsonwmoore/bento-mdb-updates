@@ -1,7 +1,8 @@
 """MDB helper functions."""
 
-from __future__ import annotations
 
+from __future__ import annotations
+import json
 from bento_meta.mdb import MDB
 from bento_meta.mdb.writeable import WriteableMDB
 from prefect_aws.secrets_manager import AwsSecret
@@ -21,7 +22,7 @@ def init_mdb_connection(
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
     aws_secret_block = AwsSecret.load("mdb-cloud-one-neo4j-creds")
-    mdb_creds = aws_secret_block.read_secret()
+    mdb_creds = json.loads(aws_secret_block.read_secret())
 
     
     if mdb_id.startswith("og-mdb"):

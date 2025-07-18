@@ -1,8 +1,8 @@
 """Run Liquibase Update on Changelog."""
 
 from __future__ import annotations
-
 import io
+import json
 import logging
 import shutil
 import stat
@@ -50,7 +50,7 @@ def set_defaults_file(
         )
         log_level = "info"
     aws_secret_block = AwsSecret.load("mdb-cloud-one-neo4j-creds")
-    mdb_creds = aws_secret_block.read_secret()
+    mdb_creds = json.loads(aws_secret_block.read_secret())
     if mdb_id.startswith("og-mdb"):
         mdb_creds['neo4j_pass'] = ""
 
