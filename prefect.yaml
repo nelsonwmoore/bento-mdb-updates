@@ -4,7 +4,7 @@ prefect-version: 3.1.15
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
-    branch: main
+    branch: cloud-one-test
     repository: https://github.com/nelsonwmoore/bento-mdb-updates.git   # will change to CBIIT/bento-mdb
 - prefect.deployments.steps.run_shell_script:
     id: install-dependencies
@@ -104,7 +104,7 @@ deployments:
   entrypoint: scripts/update_dh.py:update_datahub_flow
   parameters: {}
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
 - name: update-terms
@@ -115,7 +115,7 @@ deployments:
   entrypoint: scripts/update_terms.py:update_terms
   parameters: {}
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
 - name: neo4j-database-load
@@ -126,7 +126,7 @@ deployments:
   entrypoint: scripts/load_db.py:neo4j_load_flow
   parameters: {}
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
 - name: generate-model-version-matrix
@@ -137,7 +137,7 @@ deployments:
   entrypoint: scripts/generate_model_version_matrix.py:model_matrix_flow
   parameters: {}
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
 - name: mdb-export-s3
@@ -148,7 +148,7 @@ deployments:
   entrypoint: scripts/mdb_s3.py:mdb_export_flow
   parameters: {}
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
 - name: mdb-import-s3
@@ -159,6 +159,6 @@ deployments:
   entrypoint: scripts/mdb_s3.py:mdb_import_flow
   parameters: {}
   work_pool:
-    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}

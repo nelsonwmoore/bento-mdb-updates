@@ -49,7 +49,7 @@ def set_defaults_file(
             list(VALID_LOG_LEVELS.keys()),
         )
         log_level = "info"
-    pwd_secret_name = mdb_id + "-pwd"
+    pwd_secret_name = "mdb-cloud-one-neo4j-creds" # mdb_id + "-pwd"
     uri = mdb_uri
     user = mdb_user
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue

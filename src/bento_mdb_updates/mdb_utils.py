@@ -21,7 +21,7 @@ def init_mdb_connection(
     if mdb_id not in VALID_MDB_IDS:
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
-    pwd_secret_name = mdb_id + "-pwd"
+    pwd_secret_name = "mdb-cloud-one-neo4j-creds" # mdb_id + "-pwd"
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
     if mdb_id.startswith("og-mdb"):
         password = ""
