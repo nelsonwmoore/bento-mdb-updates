@@ -29,7 +29,7 @@ PRUNE_PRERELEASE_STMT = (
     "CALL apoc.periodic.iterate("
     "'MATCH (n) WHERE n.version IS NOT NULL "
     'AND n.version =~ ".*-[a-f0-9]{7}$" RETURN n\', '
-    "'DELETE n', "
+    "'DETACH DELETE n', "
     "{batchSize: 1000, parallel: false}) "
     "YIELD batches, total, timeTaken, committedOperations "
     "RETURN batches, total, timeTaken, committedOperations"
