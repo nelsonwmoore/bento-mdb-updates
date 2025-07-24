@@ -4,7 +4,9 @@ import logging
 
 VALID_MDB_IDS = [
     "fnl-mdb-dev",
+    "fnl-mdb-qa",
     "cloud-one-mdb-dev",
+    "cloud-one-mdb-qa",
     "og-mdb-dev",
     "og-mdb-nightly",
     "og-mdb-prod",
