@@ -162,3 +162,14 @@ deployments:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: prune-prerelease
+  version:
+  tags: []
+  concurrency_limit:
+  description: Prune prerelease data from MDB.
+  entrypoint: scripts/prune_prerelease.py:prune_prerelease_flow
+  parameters: {}
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
