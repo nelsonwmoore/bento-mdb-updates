@@ -139,6 +139,10 @@ class CADSRClient:
             msg = f"Failed to parse JSON response for entity {entity_key}: {e}\nurl: {url}"
             logger.exception(msg)
             return []
+        except requests.HTTPError:
+            msg = f"HTTP error fetching value set for CDE {cde_id}v{cde_version} for entity {entity_key}"
+            logger.exception(msg)
+            return []
         else:
             return value_set
 
