@@ -16,6 +16,7 @@ C3DC:
     tag: 2.1.0
   - version: 3.0.0
     tag: 3.0.0
+    ignore: true
   - version: 3.1.0
     tag: 3.1.0
   - version: 3.2.0
@@ -46,6 +47,7 @@ CCDI:
     tag: 2.1.0
   - version: 3.0.0
     tag: 3.0.0
+    ignore: true
   - version: 3.1.0
     tag: 3.1.0
   latest_version: 3.1.0
