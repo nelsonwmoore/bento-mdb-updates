@@ -138,10 +138,10 @@ class TestCADSRClient:
         assert_equal(actual, expected)
 
     def test_http_error(self, fake_requests_get) -> None:
-        """Test that HTTPError is raised when status code is not 2xx."""
+        """Test that empty list is returned when status code is not 2xx."""
         fake_requests_get(self.SAMPLE_RESPONSE, status_code=404)
-        with pytest.raises(HTTPError):
-            self.client.fetch_cde_valueset("11524549", "1")
+        actual = self.client.fetch_cde_valueset("11524549", "1")
+        assert_equal(actual, [])
 
     def test_bad_json(self, fake_requests_get) -> None:
         """Test that JSONDecodeError is raised when response is not JSON."""
