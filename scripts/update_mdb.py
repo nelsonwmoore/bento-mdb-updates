@@ -49,10 +49,23 @@ def set_defaults_file(
             list(VALID_LOG_LEVELS.keys()),
         )
         log_level = "info"
+    usr_secret_name = mdb_id + "-usr"
     pwd_secret_name = mdb_id + "-pwd"
-    uri = mdb_uri
-    user = mdb_user
+    uri_secret_name = mdb_id + "-uri"
+    user = None
+    uri = None
+    password = None
+    if mdb_uri:
+        uri = mdb_uri
+    else:
+        uri = Secret.load(uri_secret_name).get()  # type: ignore reportAttributeAccessIssue        
+    if mdb_user:
+        user = mdb_user
+    else:
+        uri = Secret.load(usr_secret_name).get()  # type: ignore reportAttributeAccessIssue        
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
+
+    
     if mdb_id.startswith("og-mdb"):
         password = ""
 
