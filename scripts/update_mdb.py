@@ -204,14 +204,14 @@ def liquibase_update_flow(  # noqa: PLR0913
 @click.command()
 @click.option(
     "--mdb_uri",
-    required=True,
+    required=False,
     type=str,
     prompt=True,
     help="metamodel database URI",
 )
 @click.option(
     "--mdb_user",
-    required=True,
+    required=False,
     type=str,
     prompt=True,
     help="metamodel database username",
