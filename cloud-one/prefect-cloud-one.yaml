@@ -4,7 +4,7 @@ prefect-version: 3.1.15
 pull:
 - prefect.deployments.steps.git_clone:
     id: clone-step
-    branch: cloud-one-test
+    branch: cloud-one-dev
     repository: https://github.com/nelsonwmoore/bento-mdb-updates.git   # will change to CBIIT/bento-mdb
 - prefect.deployments.steps.run_shell_script:
     id: install-dependencies
