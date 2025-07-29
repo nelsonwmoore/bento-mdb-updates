@@ -27,7 +27,9 @@ C3DC:
     tag: 3.2.2
   - version: 3.2.3
     tag: 3.2.3
-  latest_version: 3.2.3
+  - version: 4.0.0
+    tag: 4.0.0
+  latest_version: 4.0.0
   latest_prerelease_commit: null
   latest_prerelease_version: null
 CCDI:
@@ -146,9 +148,13 @@ CTDC:
     tag: 1.8.0
   - version: 1.9.0
     tag: 1.9.0
-  latest_version: 1.9.0
-  latest_prerelease_commit: 53b24a47f1da3316b16086df16e83dfd6173cd44
-  latest_prerelease_version: 1.9.0
+  - version: 1.10.0
+    tag: 1.10.0
+  - version: 1.11.0
+    tag: 1.11.0
+  latest_version: 1.11.0
+  latest_prerelease_commit: 0d73d8b346ad38591e0207d91b9e2d77055eba59
+  latest_prerelease_version: 1.11.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
