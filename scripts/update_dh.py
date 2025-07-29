@@ -31,7 +31,7 @@ QUERY = (
     "AND NONE(p in cde_pvs WHERE p.value =~ 'https?://.*') THEN cde_pvs "
     "WHEN size(cde_pvs) > 0 AND ANY(p in cde_pvs WHERE p.value =~ "
     "'https?://.*') AND size(model_pvs) > 0 THEN model_pvs "
-    "WHEN size(model_pvs) > 0 THEN model_pvs ELSE [] END AS pvs "
+    "ELSE [] END AS pvs "
     "WHERE size(pvs) > 0 UNWIND pvs AS pv "
     "OPTIONAL MATCH (pv)-[:represents]->(c_cadsr:concept)<-[:represents]-"
     "(ncit_term:term {origin_name: 'NCIt'}), "
