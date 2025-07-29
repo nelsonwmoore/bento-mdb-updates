@@ -58,7 +58,9 @@ deployments:
   concurrency_limit:
   description: Update the Neo4j database.
   entrypoint: scripts/update_mdb.py:liquibase_update_flow
-  parameters: {}
+  parameters:
+    mdb_uri: ""
+    mdb_user: ""
   work_pool:
     name: mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-queue
