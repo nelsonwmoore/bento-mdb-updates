@@ -45,12 +45,14 @@ def execute_cypher(  # noqa: C901, PLR0912
     logger.setLevel(logging.INFO)
     qfn = None
     result = None
+    logger.info(f"Run query '{query}'...")
     if (is_write):
         qfn = mdb.put_with_statement
     else:
         qfn = mdb.get_with_statement
     try:
         result = qfn(query, params)
+        logger.info("...completed")
     except Exception as e:
         logger.error(f"Error in MDB query run: {e}")
         raise
