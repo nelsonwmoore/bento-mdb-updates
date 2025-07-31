@@ -78,7 +78,6 @@ def run_cypher_flow(  # noqa: PLR0913
         qpath = Path(query[0])
         if qpath.exists():
             query = [ll for ll in qpath.open()]
-            qpath.close()
             
     for q in query:
         try:
