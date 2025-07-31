@@ -1,7 +1,7 @@
 """Run arbitrary Cypher queries on MDB"""
 
 from __future__ import annotations
-
+import logging
 from typing import Optional
 from pathlib import Path
 from bento_meta.mdb import MDB
@@ -22,6 +22,7 @@ def create_connection(
         allow_empty: bool = True,
 ) -> MDB:
     logger = get_run_logger()
+    logger.setLevel(logging.INFO)
     mdb = None
     try:
         mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user,
@@ -41,6 +42,7 @@ def execute_cypher(  # noqa: C901, PLR0912
 ) -> None:
     """Run Cypher on MDB."""
     logger = get_run_logger()
+    logger.setLevel(logging.INFO)
     qfn = None
     result = None
     if (is_write):
@@ -65,6 +67,7 @@ def run_cypher_flow(  # noqa: PLR0913
 ) -> None:
     """Run arbitrary Cypher queries on MDB."""
     logger = get_run_logger()
+    logger.setLevel(logging.INFO)
     logger.info(f"Running query:\n{query}")
     results = []
     try:
