@@ -38,7 +38,7 @@ def execute_cypher(  # noqa: C901, PLR0912
     mdb: MDB,
     query: str,
     params: dict,
-    is_write: bool = False,
+    is_write: bool = True,
 ) -> None:
     """Run Cypher on MDB."""
     logger = get_run_logger()
