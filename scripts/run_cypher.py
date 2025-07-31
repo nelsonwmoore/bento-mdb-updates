@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Optional
 from pathlib import Path
 from bento_meta.mdb import MDB
 from bento_mdb_updates.mdb_utils import init_mdb_connection
@@ -56,8 +57,8 @@ def run_cypher_flow(  # noqa: PLR0913
     mdb_id: str,
     query: list,
     params: dict = {},
-    mdb_uri: str = None,
-    mdb_user: str = None,
+    mdb_uri: Optional[str] = None,
+    mdb_user: Optional[str] = None,
 ) -> None:
     """Run arbitrary Cypher queries on MDB."""
     logger = get_run_logger()
