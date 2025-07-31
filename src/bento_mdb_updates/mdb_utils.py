@@ -21,8 +21,16 @@ def init_mdb_connection(
     if mdb_id not in VALID_MDB_IDS:
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
+    usr_secret_name = mdb_id + "-usr"
     pwd_secret_name = mdb_id + "-pwd"
+    uri_secret_name = mdb_id + "-uri"
+    password = None
+    if not uri:
+        uri = Secret.load(uri_secret_name).get()  # type: ignore reportAttributeAccessIssue        
+    if not user:
+        user = Secret.load(usr_secret_name).get()  # type: ignore reportAttributeAccessIssue        
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
+    
     if mdb_id.startswith("og-mdb"):
         password = ""
     if uri.startswith("jdbc:neo4j:"):
