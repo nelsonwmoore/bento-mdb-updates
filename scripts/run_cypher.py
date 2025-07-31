@@ -9,7 +9,9 @@ from bento_mdb_updates.mdb_utils import init_mdb_connection
 
 import click
 from prefect import flow, get_run_logger, task
+from prefect.cache_policies import INPUTS
 
+no_cache_mdb = INPUTS - 'mdb'
 
 @task
 def create_connection(
@@ -30,7 +32,7 @@ def create_connection(
     return mdb
     
 
-@task
+@task(cache_policy=no_cache_mdb)
 def execute_cypher(  # noqa: C901, PLR0912
     mdb: MDB,
     query: str,
