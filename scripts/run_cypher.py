@@ -73,6 +73,13 @@ def run_cypher_flow(  # noqa: PLR0913
         raise e
     if (params):
         logger.info(f" with params:\n{params}")
+
+    if (len(query) == 1):
+        qpath = Path(query[0])
+        if qpath.exists():
+            query = [ll for ll in qpath.open()]
+            qpath.close()
+            
     for q in query:
         try:
             result = execute_cypher(mdb, q, params)
