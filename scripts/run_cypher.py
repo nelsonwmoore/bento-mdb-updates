@@ -22,7 +22,8 @@ def create_connection(
     logger = get_run_logger()
     mdb = None
     try:
-        mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user, writeable, allow_empty)
+        mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user,
+                                  writeable=writeable, allow_empty=allow_empty)
     except Exception as e:
         logger.error(f"Error on MDB connection attempt: {e}")
         raise
