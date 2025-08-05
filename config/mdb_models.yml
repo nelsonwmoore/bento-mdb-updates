@@ -53,7 +53,7 @@ CCDI:
   - version: 3.1.0
     tag: 3.1.0
   latest_version: 3.1.0
-  latest_prerelease_commit: bef4a779fde3edb551ac71177e76ef758b554336
+  latest_prerelease_commit: c1af4db9c1e3b942d1486cb9093e3eadaa6d175b
   latest_prerelease_version: 3.1.0
 CDS:
   repository: CBIIT/cds-model
@@ -203,7 +203,7 @@ ICDC:
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
   latest_version: 1.0.0
-  latest_prerelease_commit: a842fe6914343fd1df8aff8c3752a866ce783666
+  latest_prerelease_commit: c9746e9f32e84589956956ac0f71202fc393d46a
   latest_prerelease_version: 1.0.0
 PDC:
   repository: CBIIT/pdc-model
