@@ -29,7 +29,15 @@ C3DC:
     tag: 3.2.3
   - version: 4.0.0
     tag: 4.0.0
-  latest_version: 4.0.0
+  - version: 4.0.1
+    tag: 4.0.1
+  - version: 4.0.2
+    tag: 4.0.2
+  - version: 4.0.3
+    tag: 4.0.3
+  - version: 4.0.4
+    tag: 4.0.4
+  latest_version: 4.0.4
   latest_prerelease_commit: null
   latest_prerelease_version: null
 CCDI:
@@ -203,7 +211,7 @@ ICDC:
     tag: Tag_for_FE_v3.8.7_588
     ignore: true
   latest_version: 1.0.0
-  latest_prerelease_commit: c9746e9f32e84589956956ac0f71202fc393d46a
+  latest_prerelease_commit: 8b815ce79f3a0d18af79fbb4cb4ed3c953f0110b
   latest_prerelease_version: 1.0.0
 PDC:
   repository: CBIIT/pdc-model
