@@ -37,7 +37,9 @@ C3DC:
     tag: 4.0.3
   - version: 4.0.4
     tag: 4.0.4
-  latest_version: 4.0.4
+  - version: 4.0.5
+    tag: 4.0.5
+  latest_version: 4.0.5
   latest_prerelease_commit: null
   latest_prerelease_version: null
 CCDI:
