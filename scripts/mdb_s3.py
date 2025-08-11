@@ -41,7 +41,7 @@ def export_mdb_to_s3(mdb: MDB, s3_url: str) -> None:
     logger.info("Exporting MDB to S3: %s", s3_url)
     apoc_export_stmt = (
         f"CALL apoc.export.graphml.all('{s3_url}', "
-        "{useTypes: true, storeNodeIds: true, batchSize: 10000}) "
+        "{useTypes: true, batchSize: 10000}) "
         "YIELD nodes, relationships, properties "
         "RETURN nodes, relationships, properties"
     )
@@ -60,22 +60,47 @@ def clear_mdb_database(mdb: WriteableMDB) -> None:
     logger = get_run_logger()
     logger.info("Clearing all nodes and relationships from MDB")
 
-    # Using the suggested Cypher query with proper syntax
     clear_stmt = (
         "CALL apoc.periodic.iterate("
         '"MATCH (n) RETURN id(n) as id", '
         '"MATCH (n) WHERE id(n) = $id DETACH DELETE n", '
-        "{batchSize: 10000}) "
+        "{batchSize: 10000, parallel: false}) "
         "YIELD batches, total "
         "RETURN batches, total"
     )
 
+    logger.info("Starting database clear operation")
     result = mdb.put_with_statement(clear_stmt)
     if result:
         logger.info("Clear database result: %s", result)
-        return
-    clear_fail_msg = "Clear database failed - no results returned"
-    raise RuntimeError(clear_fail_msg)
+    else:
+        clear_fail_msg = "Clear database failed - no results returned"
+        raise RuntimeError(clear_fail_msg)
+
+    count_stmt = "MATCH (n) RETURN count(n) as node_count"
+    count_result = mdb.get_with_statement(count_stmt)
+    logger.info("Count result: %s", count_result)
+
+    if count_result and len(count_result) > 0:
+        first_result = count_result[0]
+        node_count = (
+            first_result.get("node_count", 0) if isinstance(first_result, dict) else 0
+        )
+        if node_count > 0:
+            logger.warning(
+                "Database still contains %d nodes after clear operation",
+                node_count,
+            )
+
+            sample_stmt = (
+                "MATCH (n) RETURN labels(n) as labels, keys(n) as properties LIMIT 5"
+            )
+            sample_result = mdb.get_with_statement(sample_stmt)
+            logger.info("Sample remaining nodes: %s", sample_result)
+
+            error_msg = f"Clear operation incomplete: {node_count} nodes remaining"
+            raise RuntimeError(error_msg)
+        logger.info("Database successfully cleared - 0 nodes remaining")
 
 
 @task(name="Import MDB from S3", cache_policy=NO_CACHE)
@@ -94,10 +119,11 @@ def import_mdb_from_s3(
     logger.info("Importing MDB from S3: %s", s3_url)
     apoc_import_stmt = (
         f"CALL apoc.import.graphml('{s3_url}', "
-        "{storeNodeIds: true, readLabels: true, batchSize: 10000}) "
+        "{readLabels: true, batchSize: 10000}) "
         "YIELD nodes, relationships, properties "
         "RETURN nodes, relationships, properties"
     )
+    logger.info("Importing GraphML with fresh node ID assignment")
     result = mdb.put_with_statement(apoc_import_stmt)
     if result:
         logger.info("Import result: %s", result)
