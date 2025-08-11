@@ -64,7 +64,7 @@ def clear_mdb_database(mdb: WriteableMDB) -> None:
         "CALL apoc.periodic.iterate("
         '"MATCH (n) RETURN n", '
         '"DETACH DELETE n", '
-        "{batchSize: 10000, parallel: false}) "
+        "{batchSize: 1000, parallel: false}) "
         "YIELD batches, total "
         "RETURN batches, total"
     )
