@@ -162,6 +162,17 @@ deployments:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
+- name: mdb-clear-database
+  version:
+  tags: []
+  concurrency_limit:
+  description: Clear all nodes and relationships from MDB.
+  entrypoint: scripts/mdb_s3.py:mdb_clear_flow
+  parameters: {}
+  work_pool:
+    name: fnl-mdb-8gb-prefect-2.20.3-python3.9
+    work_queue_name:
+    job_variables: {}
 - name: prune-prerelease
   version:
   tags: []

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NO_CACHE
-from zoneinfo import ZoneInfo
 
 from bento_mdb_updates.mdb_utils import init_mdb_connection
 

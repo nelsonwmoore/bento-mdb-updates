@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NO_CACHE
-from zoneinfo import ZoneInfo
 
 from bento_mdb_updates.mdb_utils import init_mdb_connection
 
@@ -54,10 +54,43 @@ def export_mdb_to_s3(mdb: MDB, s3_url: str) -> None:
     raise RuntimeError(export_fail_msg)
 
 
+@task(name="Clear MDB Database", cache_policy=NO_CACHE)
+def clear_mdb_database(mdb: WriteableMDB) -> None:
+    """Clear all existing nodes and relationships from the database."""
+    logger = get_run_logger()
+    logger.info("Clearing all nodes and relationships from MDB")
+
+    # Using the suggested Cypher query with proper syntax
+    clear_stmt = (
+        "CALL apoc.periodic.iterate("
+        '"MATCH (n) RETURN id(n) as id", '
+        '"MATCH (n) WHERE id(n) = $id DETACH DELETE n", '
+        "{batchSize: 10000}) "
+        "YIELD batches, total "
+        "RETURN batches, total"
+    )
+
+    result = mdb.put_with_statement(clear_stmt)
+    if result:
+        logger.info("Clear database result: %s", result)
+        return
+    clear_fail_msg = "Clear database failed - no results returned"
+    raise RuntimeError(clear_fail_msg)
+
+
 @task(name="Import MDB from S3", cache_policy=NO_CACHE)
-def import_mdb_from_s3(mdb: WriteableMDB, s3_url: str) -> None:
+def import_mdb_from_s3(
+    mdb: WriteableMDB,
+    s3_url: str,
+    *,
+    clear_db: bool = False,
+) -> None:
     """Import MDB from graphml file in S3."""
     logger = get_run_logger()
+
+    if clear_db:
+        clear_mdb_database(mdb)
+
     logger.info("Importing MDB from S3: %s", s3_url)
     apoc_import_stmt = (
         f"CALL apoc.import.graphml('{s3_url}', "
@@ -94,13 +127,15 @@ def mdb_export_flow(
 
 
 @flow(name="mdb-import-s3")
-def mdb_import_flow(
+def mdb_import_flow(  # noqa: PLR0913
     mdb_id: str,
     mdb_uri: str,
     mdb_user: str,
     key: str,
     bucket: str,
     endpoint: str = DEFAULT_S3_ENDPOINT,
+    *,
+    clear_db: bool = False,
 ) -> None:
     """Import MDB data from S3 into Neo4j."""
     mdb = init_mdb_connection(
@@ -111,4 +146,21 @@ def mdb_import_flow(
         allow_empty=True,
     )
     s3_url = build_s3_url(bucket, key, endpoint)
-    import_mdb_from_s3(mdb=mdb, s3_url=s3_url)
+    import_mdb_from_s3(mdb=mdb, s3_url=s3_url, clear_db=clear_db)
+
+
+@flow(name="mdb-clear-database")
+def mdb_clear_flow(
+    mdb_id: str,
+    mdb_uri: str,
+    mdb_user: str,
+) -> None:
+    """Clear all nodes and relationships from MDB."""
+    mdb = init_mdb_connection(
+        mdb_id,
+        mdb_uri,
+        mdb_user,
+        writeable=True,
+        allow_empty=True,
+    )
+    clear_mdb_database(mdb)
