@@ -19,6 +19,8 @@ import stamina
 import yaml
 from tqdm import tqdm
 
+from bento_mdb_updates.constants import NCIM_TSV_NAME
+
 if TYPE_CHECKING:
     from bento_mdb_updates.datatypes import AnnotationSpec, MDBCDESpec, PermissibleValue
 
@@ -46,7 +48,7 @@ def get_last_sync_date(
     return datetime.datetime.strptime(
         sync_status[source]["last_updated"],
         sync_status[source]["date_format"],
-    ).replace(tzinfo=datetime.timezone.utc)
+    ).replace(tzinfo=datetime.UTC)
 
 
 class CADSRClient:
@@ -200,7 +202,7 @@ class CADSRClient:
 class NCItClient:
     """Client for NCIt API."""
 
-    DEFAULT_NCIM_TSV = Path().cwd() / "data/source/NCIt/NCIt_Metathesaurus_Mapping.txt"
+    DEFAULT_NCIM_TSV = Path().cwd() / "data/source/NCIt" / NCIM_TSV_NAME
     DEFAULT_NCIM_README_URL = (
         "https://evs.nci.nih.gov/ftp1/Mappings/NCIt_Metathesaurus_Mapping.README.txt"
     )
@@ -240,7 +242,7 @@ class NCItClient:
             datetime.datetime.strptime(
                 match.group(1),
                 self.DATE_FMT,
-            ).replace(tzinfo=datetime.timezone.utc)
+            ).replace(tzinfo=datetime.UTC)
             if match
             else None
         )
