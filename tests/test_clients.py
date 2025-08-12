@@ -8,6 +8,7 @@ import requests
 from requests.exceptions import HTTPError
 
 from bento_mdb_updates.clients import CADSRClient, NCItClient
+from bento_mdb_updates.constants import NCIM_TSV_NAME
 from bento_mdb_updates.datatypes import AnnotationSpec
 from tests.test_utils import (
     TEST_ANNOTATION_SPEC_NCIM,
@@ -276,7 +277,7 @@ class TestNCItClient:
         mock_ncit_client,
         fake_requests_get,
     ) -> None:
-        mock_name = "NCIt_Metathesaurus_Mapping.txt"
+        mock_name = NCIM_TSV_NAME
         zip = create_mock_zip(mock_name, TEST_NCIM_MAPPING_TSV)
         fake_requests_get(content=zip)
         actual = mock_ncit_client.download_and_extract_tsv(tsv_filename=mock_name)

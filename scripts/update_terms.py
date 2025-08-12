@@ -61,25 +61,22 @@ def update_mdb_cdes_from_term_sources(
 ) -> ModelCDESpec:
     """Update ModelCDESpec with new CDE PVs and synonyms from caDSR and NCIt."""
     logger = get_run_logger()
-    today = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
+    today = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d")
     update_cde_spec: ModelCDESpec = {
         "handle": "TERM_UPDATES",
         "version": today,
         "annotations": [],
     }
 
-    # Check caDSR for new PVs
     logger.info("Checking caDSR for new PVs...")
     cadsr_client = CADSRClient()
     cadsr_annotations = cadsr_client.check_cdes_against_mdb(mdb_cdes)
     update_cde_spec["annotations"].extend(cadsr_annotations)
 
-    # get NCIt synonyms for new PVs
     logger.info("Getting NCIt synonyms for new PVs...")
     ncit_client = NCItClient()
     add_ncit_synonyms_to_model_cde_spec(update_cde_spec, ncit_client)
 
-    # check NCIt for new PV synonyms
     if ncit_client.check_ncit_for_updated_mappings(force_update=True):
         logger.info("Checking NCIt for new PV synonyms...")
         ncit_annotations = ncit_client.check_synonyms_against_mdb(
@@ -200,7 +197,7 @@ def update_terms(  # noqa: PLR0913
 ) -> None:
     """Check for new CDE PVs and synonyms and generate Cypher to update the database."""
     logger = get_run_logger()
-    today = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d")
+    today = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d")
     if output_file is None:
         output_file = Path(f"data/output/mdb_cdes/mdb_cdes_{mdb_id}_{today}.json")
     else:
