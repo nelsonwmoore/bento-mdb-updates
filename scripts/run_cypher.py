@@ -64,6 +64,7 @@ def run_cypher_flow(  # noqa: PLR0913
     mdb_id: str,
     query: list,
     params: dict = {},
+    allow_empty: Optional[bool] = True,
     mdb_uri: Optional[str] = None,
     mdb_user: Optional[str] = None,
 ) -> None:
@@ -73,7 +74,7 @@ def run_cypher_flow(  # noqa: PLR0913
     logger.info(f"Running query:\n{query}")
     results = []
     try:
-        mdb = create_connection(mdb_id, mdb_uri, mdb_user, True, False)
+        mdb = create_connection(mdb_id, mdb_uri, mdb_user, True, allow_empty)
     except Exception as e:
         raise e
     if (params):
