@@ -13,6 +13,8 @@ VALID_MDB_IDS = [
 ]
 MDB_IDS_WITH_PRERELEASES = [
     "og-mdb-nightly",
+    "fnl-mdb-dev",
+    "cloud-one-mdb-dev",
 ]
 VALID_TIERS = {
     "lower": ["dev", "dev2", "qa", "qa2"],

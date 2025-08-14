@@ -1,4 +1,4 @@
-name: Generate and Commit Term Update Changelog
+name: Generate and Commit Term Update Changelog for FNL-MDB-DEV
 
 on:
   schedule:
@@ -13,15 +13,6 @@ on:
         description: "Commit SHA for reference"
         required: false
         default: ""
-      dh_tier:
-        description: "Data Hub tier to update"
-        required: true
-        type: choice
-        options:
-          - "upper"
-          - "lower"
-          - "both"
-        default: "both"
       log_level:
         description: "Log level"
         required: false
@@ -46,23 +37,12 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          TIER="${{ github.event.inputs.dh_tier }}"
-          BASE_MATRIX='{
+          MATRIX='{
             "include": [
-              { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" },
-              { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" }
+              { "name": "fnl-dev", "mdb_uri": "jdbc:neo4j:bolt://fnl-mdb-dev-nlb-27f9947907c13f9f.elb.us-east-1.amazonaws.com:7687", "mdb_id": "fnl-mdb-dev" }
             ]
           }'
-          if [ "$TIER" = "lower" ]; then
-            MATRIX='{ "include":[ { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" } ] }'
-          elif [ "$TIER" = "upper" ]; then
-            MATRIX='{ "include":[ { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" } ] }'
-          else
-            MATRIX="$BASE_MATRIX"
-          fi
-
           MATRIX=$(echo "$MATRIX" | jq -c .)
-
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
 
@@ -74,8 +54,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
     outputs:
-      changelog_files_nightly: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'nightly' && steps.update-terms.outputs.changelog_files || '' }}
-      changelog_files_dev: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'dev' && steps.update-terms.outputs.changelog_files || '' }}
+      changelog_files: ${{ steps.update-terms.outputs.changelog_files && matrix.name == 'fnl-dev' && steps.update-terms.outputs.changelog_files || '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
@@ -182,33 +161,15 @@ jobs:
 
           echo "Changelog files for ${{ matrix.name }}: $RESULT_JSON"
 
-
-  update-og-mdb-nightly-and-dh-lower:
+  update-fnl-mdb-dev:
     needs: [setup, update-mdb-terms]
-    if: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly != '' && needs.update-mdb-terms.outputs.changelog_files_nightly != '[]' }}
-    uses: ./.github/workflows/update_mdb_and_dh.yml
+    if: ${{ needs.update-mdb-terms.outputs.changelog_files != '' && needs.update-mdb-terms.outputs.changelog_files != '[]' }}
+    uses: ./.github/workflows/update_mdb.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587
+      mdb_uri: jdbc:neo4j:bolt://fnl-mdb-dev-nlb-27f9947907c13f9f.elb.us-east-1.amazonaws.com:7687
       mdb_user: neo4j
-      mdb_id: og-mdb-nightly
-      dh_tier: lower
-      changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly }}
+      mdb_id: fnl-mdb-dev
+      changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files }}
       dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
-      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
-      log_level: ${{ github.event.inputs.log_level || 'info' }}
-
-  update-og-mdb-dev-and-dh-upper:
-    needs: [setup, update-mdb-terms]
-    if: ${{ needs.update-mdb-terms.outputs.changelog_files_dev != '' && needs.update-mdb-terms.outputs.changelog_files_dev != '[]' }}
-    uses: ./.github/workflows/update_mdb_and_dh.yml
-    secrets: inherit
-    with:
-      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687
-      mdb_user: neo4j
-      mdb_id: og-mdb-dev
-      dh_tier: upper
-      changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_dev }}
-      dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}
-      no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}

@@ -499,7 +499,7 @@ jobs:
           echo "Upper tier changelog files: $(echo $UPPER_CHANGELOGS | jq .)"
           echo "Lower tier changelog files: $(echo $LOWER_CHANGELOGS | jq .)"
 
-  update-mdb-nightly-and-dh-lower:
+  update-og-mdb-nightly-and-dh-lower:
     needs: [determine-models, collect-changelogs, commit-all-changelogs]
     if: ${{ needs.collect-changelogs.outputs.changelog_files_lower != '' && needs.collect-changelogs.outputs.changelog_files_lower != '[]' && !fromJson(github.event.inputs.no_commit || 'false') }}
     uses: ./.github/workflows/update_mdb_and_dh.yml
@@ -514,7 +514,7 @@ jobs:
       no_commit: ${{ fromJson(github.event.inputs.no_commit || 'false') }}
       log_level: ${{ github.event.inputs.log_level || 'info' }}
 
-  update-mdb-dev-and-dh-upper:
+  update-og-mdb-dev-and-dh-upper:
     needs: [determine-models, collect-changelogs, commit-all-changelogs]
     if: ${{ needs.collect-changelogs.outputs.changelog_files_upper != '' && needs.collect-changelogs.outputs.changelog_files_upper != '[]' && !fromJson(github.event.inputs.no_commit || 'false') }}
     uses: ./.github/workflows/update_mdb_and_dh.yml

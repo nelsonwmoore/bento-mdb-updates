@@ -19,10 +19,6 @@ on:
         description: "ID of MDB to update"
         required: true
         type: string
-      dh_tier:
-        description: "Data Hub tier to update"
-        required: true
-        type: string
       log_level:
         description: "Log level"
         required: false
@@ -30,11 +26,6 @@ on:
         default: "info"
       dry_run:
         description: "Dry run flag"
-        required: false
-        type: boolean
-        default: false
-      no_commit:
-        description: "Don't commit changes to GitHub."
         required: false
         type: boolean
         default: false
@@ -47,7 +38,7 @@ on:
         required: true
 
 jobs:
-  update-mdb-and-dh:
+  update-mdb:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -96,21 +87,17 @@ jobs:
             --arg file "$file" \
             --arg id "${{ inputs.mdb_id }}" \
             --arg log_level "${{ inputs.log_level || 'info' }}" \
-            --arg tier "${{ inputs.dh_tier }}" \
             --argjson dry_run "${{ inputs.dry_run || false }}" \
-            --argjson no_commit "${{ inputs.no_commit || false }}" \
             '{
               "mdb_uri": $uri,
               "mdb_user": $user,
               "changelog_file": $file,
               "mdb_id": $id,
               "log_level": $log_level,
-              "tier": $tier,
-              "dry_run": $dry_run,
-              "no_commit": $no_commit
+              "dry_run": $dry_run
             }')
 
-            OUTPUT=$(prefect deployment run update-mdb-and-dh/update-mdb-and-dh \
+            OUTPUT=$(prefect deployment run liquibase-update/liquibase-update \
               --params "$PARAMS" 2>&1)
 
             RUN_ID=$(echo "$OUTPUT" | grep -oP "(?<=UUID:\s)[0-9a-fA-F-]+" | head -n1)
