@@ -31,8 +31,6 @@ JVM_HEAP_MAX = "3g"
 
 @task
 def set_defaults_file(
-    mdb_uri: str,
-    mdb_user: str,
     changelog_file: str,
     mdb_id: str,
     log_level: str,
@@ -49,12 +47,15 @@ def set_defaults_file(
             list(VALID_LOG_LEVELS.keys()),
         )
         log_level = "info"
+
+    uri_secret_name = mdb_id + "-uri"
+    usr_secret_name = mdb_id + "-usr"
     pwd_secret_name = mdb_id + "-pwd"
-    uri = mdb_uri
-    user = mdb_user
+    uri = Secret.load(uri_secret_name).get()  # type: ignore reportAttributeAccessIssue
+    user = Secret.load(usr_secret_name).get()  # type: ignore reportAttributeAccessIssue
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
     if mdb_id.startswith("og-mdb"):
-        password = ""
+        password = ""  # can't set empty string in prefect secrets
 
     # create liquibase log file
     log_file = tempfile.NamedTemporaryFile(suffix=".log", delete=False)  # noqa: SIM115
@@ -137,9 +138,7 @@ def run_liquibase_update(  # noqa: C901, PLR0912
 
 
 @flow(name="liquibase-update", log_prints=True)
-def liquibase_update_flow(  # noqa: PLR0913
-    mdb_uri: str,
-    mdb_user: str,
+def liquibase_update_flow(
     changelog_file: str,
     mdb_id: str,
     log_level: str = "info",
@@ -160,8 +159,6 @@ def liquibase_update_flow(  # noqa: PLR0913
         plb_logger.addHandler(APILogHandler())
 
     defaults_file, log_file = set_defaults_file(
-        mdb_uri,
-        mdb_user,
         changelog_file,
         mdb_id,
         log_level,
@@ -190,20 +187,6 @@ def liquibase_update_flow(  # noqa: PLR0913
 
 @click.command()
 @click.option(
-    "--mdb_uri",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database URI",
-)
-@click.option(
-    "--mdb_user",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database username",
-)
-@click.option(
     "--changelog_file",
     required=True,
     type=str,
@@ -218,9 +201,7 @@ def liquibase_update_flow(  # noqa: PLR0913
     default=False,
     help="Dry run flag",
 )
-def main(  # noqa: PLR0913
-    mdb_uri: str,
-    mdb_user: str,
+def main(
     changelog_file: str,
     mdb_id: str,
     log_level: str,
@@ -229,8 +210,6 @@ def main(  # noqa: PLR0913
 ) -> None:
     """Run Liquibase Update on Changelog."""
     liquibase_update_flow(
-        mdb_uri=mdb_uri,
-        mdb_user=mdb_user,
         changelog_file=changelog_file,
         mdb_id=mdb_id,
         log_level=log_level,

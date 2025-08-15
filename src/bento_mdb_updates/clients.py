@@ -138,11 +138,16 @@ class CADSRClient:
             json_response = response.json()
             value_set = self.get_valueset_from_json(json_response)
         except JSONDecodeError as e:
-            msg = f"Failed to parse JSON response for entity {entity_key}: {e}\nurl: {url}"
+            msg = (
+                f"Failed to parse JSON response for entity{entity_key}: {e}\nurl: {url}"
+            )
             logger.exception(msg)
             return []
         except requests.HTTPError:
-            msg = f"HTTP error fetching value set for CDE {cde_id}v{cde_version} for entity {entity_key}"
+            msg = (
+                f"HTTP error fetching value set for CDE {cde_id}v{cde_version}"
+                f" for entity {entity_key}"
+            )
             logger.exception(msg)
             return []
         else:

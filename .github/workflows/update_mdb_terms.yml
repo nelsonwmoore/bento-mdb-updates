@@ -49,14 +49,14 @@ jobs:
           TIER="${{ github.event.inputs.dh_tier }}"
           BASE_MATRIX='{
             "include": [
-              { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" },
-              { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" }
+              { "name": "nightly", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" },
+              { "name": "dev", "mdb_id": "og-mdb-dev", "dh_tier": "upper" }
             ]
           }'
           if [ "$TIER" = "lower" ]; then
-            MATRIX='{ "include":[ { "name": "nightly", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" } ] }'
+            MATRIX='{ "include":[ { "name": "nightly", "mdb_id": "og-mdb-nightly", "dh_tier": "lower" } ] }'
           elif [ "$TIER" = "upper" ]; then
-            MATRIX='{ "include":[ { "name": "dev", "mdb_uri": "jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687", "mdb_id": "og-mdb-dev", "dh_tier": "upper" } ] }'
+            MATRIX='{ "include":[ { "name": "dev", "mdb_id": "og-mdb-dev", "dh_tier": "upper" } ] }'
           else
             MATRIX="$BASE_MATRIX"
           fi
@@ -107,15 +107,11 @@ jobs:
           trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
 
           PARAMS=$(jq -n \
-          --arg mdb_uri "${{ matrix.mdb_uri }}" \
-          --arg mdb_user "neo4j" \
           --arg mdb_id "${{ matrix.mdb_id }}" \
           --arg author "${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
           --arg commit "${{ github.event.inputs.commit_sha || github.sha }}" \
           --argjson no_commit "${{ github.event.inputs.no_commit || false }}" \
           '{
-            "mdb_uri": $mdb_uri,
-            "mdb_user": $mdb_user,
             "mdb_id": $mdb_id,
             "author": $author,
             "commit": $commit,
@@ -189,8 +185,6 @@ jobs:
     uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587
-      mdb_user: neo4j
       mdb_id: og-mdb-nightly
       dh_tier: lower
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_nightly }}
@@ -204,8 +198,6 @@ jobs:
     uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687
-      mdb_user: neo4j
       mdb_id: og-mdb-dev
       dh_tier: upper
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files_dev }}

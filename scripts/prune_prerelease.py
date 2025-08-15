@@ -67,16 +67,9 @@ def prune_prerelease_data(mdb: WriteableMDB, *, dry_run: bool = True) -> None:
 @flow(name="mdb-prune-prerelease")
 def prune_prerelease_flow(
     mdb_id: str,
-    mdb_uri: str,
-    mdb_user: str,
     *,
     dry_run: bool = True,
 ) -> None:
     """Prune prerelease data from MDB."""
-    mdb = init_mdb_connection(
-        mdb_id,
-        mdb_uri,
-        mdb_user,
-        writeable=True,
-    )
+    mdb = init_mdb_connection(mdb_id, writeable=True)
     prune_prerelease_data(mdb, dry_run=dry_run)

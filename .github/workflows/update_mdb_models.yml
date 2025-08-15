@@ -95,9 +95,6 @@ jobs:
           set -xeuo pipefail
           trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
 
-          UPPER_MDB_URI="jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687"
-          LOWER_MDB_URI="jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587"
-
           IS_AUTOMATIC="false"
           if [ "${{ github.event_name }}" == "push" ]; then
             IS_AUTOMATIC="true"
@@ -138,14 +135,10 @@ jobs:
             # otherwise, generate the full matrix for both tiers
             if [ -n "$UPPER_MDB_ID" ]; then
               UPPER_PARAMS=$(jq -n \
-              --arg mdb_uri "$UPPER_MDB_URI" \
-              --arg mdb_user "neo4j" \
               --arg mdb_id "$UPPER_MDB_ID" \
               --arg model_specs_yaml "${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}" \
               --argjson datahub_only "${{ github.event.inputs.datahub_only || false }}" \
               '{
-                "mdb_uri": $mdb_uri,
-                "mdb_user": $mdb_user,
                 "mdb_id": $mdb_id,
                 "model_specs_yaml": $model_specs_yaml,
                 "datahub_only": $datahub_only
@@ -192,14 +185,10 @@ jobs:
 
             if [ -n "$LOWER_MDB_ID" ]; then
               LOWER_PARAMS=$(jq -n \
-                --arg mdb_uri "$LOWER_MDB_URI" \
-                --arg mdb_user "neo4j" \
                 --arg mdb_id "$LOWER_MDB_ID" \
                 --arg model_specs_yaml "${{ github.event.inputs.models_spec_path || 'config/mdb_models.yml' }}" \
                 --argjson datahub_only "${{ github.event.inputs.datahub_only || false }}" \
                 '{
-                  "mdb_uri": $mdb_uri,
-                  "mdb_user": $mdb_user,
                   "mdb_id": $mdb_id,
                   "model_specs_yaml": $model_specs_yaml,
                   "datahub_only": $datahub_only
@@ -505,8 +494,6 @@ jobs:
     uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8587
-      mdb_user: neo4j
       mdb_id: og-mdb-nightly
       dh_tier: lower
       changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files_lower }}
@@ -520,8 +507,6 @@ jobs:
     uses: ./.github/workflows/update_mdb_and_dh.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt://ip-172-30-0-18.ec2.internal:8687
-      mdb_user: neo4j
       mdb_id: og-mdb-dev
       dh_tier: upper
       changelog_files: ${{ needs.collect-changelogs.outputs.changelog_files_upper }}

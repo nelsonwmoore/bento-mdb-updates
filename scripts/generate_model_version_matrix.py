@@ -35,8 +35,6 @@ def make_matrix_output_more_visible(matrix: dict) -> None:
 
 @flow(name="generate-model-version-matrix", log_prints=True)
 def model_matrix_flow(
-    mdb_uri: str,
-    mdb_user: str,
     mdb_id: str,
     model_specs_yaml: str,
     *,
@@ -45,7 +43,7 @@ def model_matrix_flow(
     """Generate matrix with models/versions to be added to MDB."""
     model_specs = load_model_specs_from_yaml(Path(model_specs_yaml))
 
-    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user)
+    mdb = init_mdb_connection(mdb_id)
 
     include_prerelease = mdb_id in MDB_IDS_WITH_PRERELEASES
     models_to_update = compare_model_specs_to_mdb(
@@ -74,20 +72,6 @@ def model_matrix_flow(
 
 @click.command()
 @click.option(
-    "--mdb_uri",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database URI",
-)
-@click.option(
-    "--mdb_user",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database username",
-)
-@click.option(
     "--mdb_id",
     required=True,
     type=str,
@@ -109,8 +93,6 @@ def model_matrix_flow(
     help="only include datahub models",
 )
 def main(
-    mdb_uri: str,
-    mdb_user: str,
     mdb_id: str,
     model_specs_yaml: str,
     *,
@@ -118,8 +100,6 @@ def main(
 ) -> None:
     """Generate matrix with models/versions to be added to MDB."""
     model_matrix_flow(
-        mdb_uri=mdb_uri,
-        mdb_user=mdb_user,
         mdb_id=mdb_id,
         model_specs_yaml=model_specs_yaml,
         datahub_only=datahub_only,

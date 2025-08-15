@@ -118,17 +118,6 @@ deployments:
     name: mdb-8gb-prefect-prod-2.20.3-python3.9
     work_queue_name:
     job_variables: {}
-- name: neo4j-database-load
-  version:
-  tags: []
-  concurrency_limit:
-  description: Load Neo4j database from S3 dump file.
-  entrypoint: scripts/load_db.py:neo4j_load_flow
-  parameters: {}
-  work_pool:
-    name: mdb-8gb-prefect-prod-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
 - name: generate-model-version-matrix
   version:
   tags: []

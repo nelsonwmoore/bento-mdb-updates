@@ -135,8 +135,6 @@ def import_mdb_from_s3(
 @flow(name="mdb-export-s3")
 def mdb_export_flow(
     mdb_id: str,
-    mdb_uri: str,
-    mdb_user: str,
     bucket: str,
     endpoint: str = DEFAULT_S3_ENDPOINT,
 ) -> str:
@@ -145,7 +143,7 @@ def mdb_export_flow(
 
     Returns S3 URL for chaining operations.
     """
-    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user)
+    mdb = init_mdb_connection(mdb_id)
     s3_key = f"{mdb_id}_{get_current_date()}.graphml"
     s3_url = build_s3_url(bucket, s3_key, endpoint)
     export_mdb_to_s3(mdb=mdb, s3_url=s3_url)
@@ -153,10 +151,8 @@ def mdb_export_flow(
 
 
 @flow(name="mdb-import-s3")
-def mdb_import_flow(  # noqa: PLR0913
+def mdb_import_flow(
     mdb_id: str,
-    mdb_uri: str,
-    mdb_user: str,
     key: str,
     bucket: str,
     endpoint: str = DEFAULT_S3_ENDPOINT,
@@ -164,13 +160,7 @@ def mdb_import_flow(  # noqa: PLR0913
     clear_db: bool = False,
 ) -> None:
     """Import MDB data from S3 into Neo4j."""
-    mdb = init_mdb_connection(
-        mdb_id,
-        mdb_uri,
-        mdb_user,
-        writeable=True,
-        allow_empty=True,
-    )
+    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
     s3_url = build_s3_url(bucket, key, endpoint)
     import_mdb_from_s3(mdb=mdb, s3_url=s3_url, clear_db=clear_db)
 
@@ -178,15 +168,7 @@ def mdb_import_flow(  # noqa: PLR0913
 @flow(name="mdb-clear-database")
 def mdb_clear_flow(
     mdb_id: str,
-    mdb_uri: str,
-    mdb_user: str,
 ) -> None:
     """Clear all nodes and relationships from MDB."""
-    mdb = init_mdb_connection(
-        mdb_id,
-        mdb_uri,
-        mdb_user,
-        writeable=True,
-        allow_empty=True,
-    )
+    mdb = init_mdb_connection(mdb_id, writeable=True, allow_empty=True)
     clear_mdb_database(mdb)

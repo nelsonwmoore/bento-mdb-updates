@@ -39,7 +39,7 @@ jobs:
         run: |
           MATRIX='{
             "include": [
-              { "name": "fnl-dev", "mdb_uri": "jdbc:neo4j:bolt://fnl-mdb-dev-nlb-27f9947907c13f9f.elb.us-east-1.amazonaws.com:7687", "mdb_id": "fnl-mdb-dev" }
+              { "name": "fnl-dev", "mdb_id": "fnl-mdb-dev" }
             ]
           }'
           MATRIX=$(echo "$MATRIX" | jq -c .)
@@ -86,15 +86,11 @@ jobs:
           trap 'echo "Error in $BASH_COMMAND at line $LINENO (exit code $?)"' ERR
 
           PARAMS=$(jq -n \
-          --arg mdb_uri "${{ matrix.mdb_uri }}" \
-          --arg mdb_user "neo4j" \
           --arg mdb_id "${{ matrix.mdb_id }}" \
           --arg author "${{ github.event.inputs.author || 'GitHub Actions Bot' }}" \
           --arg commit "${{ github.event.inputs.commit_sha || github.sha }}" \
           --argjson no_commit "${{ github.event.inputs.no_commit || false }}" \
           '{
-            "mdb_uri": $mdb_uri,
-            "mdb_user": $mdb_user,
             "mdb_id": $mdb_id,
             "author": $author,
             "commit": $commit,
@@ -167,8 +163,6 @@ jobs:
     uses: ./.github/workflows/update_mdb.yml
     secrets: inherit
     with:
-      mdb_uri: jdbc:neo4j:bolt://fnl-mdb-dev-nlb-27f9947907c13f9f.elb.us-east-1.amazonaws.com:7687
-      mdb_user: neo4j
       mdb_id: fnl-mdb-dev
       changelog_files: ${{ needs.update-mdb-terms.outputs.changelog_files }}
       dry_run: ${{ fromJson(github.event.inputs.dry_run || 'false') }}

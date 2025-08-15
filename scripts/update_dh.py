@@ -55,12 +55,10 @@ QUERY = (
 
 @task
 def get_pvs_json(
-    mdb_uri: str,
-    mdb_user: str,
     mdb_id: str,
 ) -> str:
     """Get JSON from MDB with CDE PVs and Synonyms in Data Hub format."""
-    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user)
+    mdb = init_mdb_connection(mdb_id)
     result = mdb.get_with_statement(QUERY)
     return json.dumps(result, indent=2)
 
@@ -181,8 +179,6 @@ def update_datahub_terms(
 
 @flow(name="update-datahub")
 def update_datahub_flow(
-    mdb_uri: str,
-    mdb_user: str,
     mdb_id: str,
     tier: str,
     *,
@@ -190,11 +186,7 @@ def update_datahub_flow(
 ) -> None:
     """Generate CDE PV & Synonym JSON and update Data Hub terms repo."""
     logger = get_run_logger()
-    pvs_json = get_pvs_json(
-        mdb_uri=mdb_uri,
-        mdb_user=mdb_user,
-        mdb_id=mdb_id,
-    )
+    pvs_json = get_pvs_json(mdb_id=mdb_id)
     if not pvs_json:
         logger.error("No PVs JSON found. Exiting.")
         return
@@ -204,20 +196,6 @@ def update_datahub_flow(
 
 
 @click.command()
-@click.option(
-    "--mdb_uri",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database URI",
-)
-@click.option(
-    "--mdb_user",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database username",
-)
 @click.option(
     "--mdb_id",
     required=True,
@@ -240,21 +218,13 @@ def update_datahub_flow(
     help="Don't commit changes",
 )
 def main(
-    mdb_uri: str,
-    mdb_user: str,
     mdb_id: str,
     tier: str,
     *,
     no_commit: bool = False,
 ) -> None:
     """Generate CDE PV & Synonym JSON and update Data Hub terms repo."""
-    update_datahub_flow(
-        mdb_uri=mdb_uri,
-        mdb_user=mdb_user,
-        mdb_id=mdb_id,
-        tier=tier,
-        no_commit=no_commit,
-    )
+    update_datahub_flow(mdb_id=mdb_id, tier=tier, no_commit=no_commit)
 
 
 if __name__ == "__main__":

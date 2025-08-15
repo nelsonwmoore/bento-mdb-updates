@@ -6,9 +6,7 @@ from prefect.deployments import run_deployment
 
 
 @flow(name="update-mdb-and-dh")
-def update_mdb_and_dh_flow(  # noqa: PLR0913
-    mdb_uri: str,
-    mdb_user: str,
+def update_mdb_and_dh_flow(
     changelog_file: str,
     mdb_id: str,
     log_level: str,
@@ -24,8 +22,6 @@ def update_mdb_and_dh_flow(  # noqa: PLR0913
     run_deployment(
         name=liq_update_deployment,
         parameters={
-            "mdb_uri": mdb_uri,
-            "mdb_user": mdb_user,
             "changelog_file": changelog_file,
             "mdb_id": mdb_id,
             "log_level": log_level,
@@ -37,8 +33,6 @@ def update_mdb_and_dh_flow(  # noqa: PLR0913
     run_deployment(
         name="update-datahub/update-datahub",
         parameters={
-            "mdb_uri": mdb_uri,
-            "mdb_user": mdb_user,
             "mdb_id": mdb_id,
             "tier": tier,
             "no_commit": no_commit,
@@ -49,20 +43,6 @@ def update_mdb_and_dh_flow(  # noqa: PLR0913
 
 
 @click.command()
-@click.option(
-    "--mdb_uri",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database URI",
-)
-@click.option(
-    "--mdb_user",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database username",
-)
 @click.option(
     "--changelog_file",
     required=True,
@@ -105,9 +85,7 @@ def update_mdb_and_dh_flow(  # noqa: PLR0913
     show_default=True,
     help="Don't commit changes",
 )
-def main(  # noqa: PLR0913
-    mdb_uri: str,
-    mdb_user: str,
+def main(
     changelog_file: str,
     mdb_id: str,
     log_level: str,
@@ -118,8 +96,6 @@ def main(  # noqa: PLR0913
 ) -> None:
     """Orchestration script to update MDB and Data Hub sequentially."""
     update_mdb_and_dh_flow(
-        mdb_uri=mdb_uri,
-        mdb_user=mdb_user,
         changelog_file=changelog_file,
         mdb_id=mdb_id,
         log_level=log_level,

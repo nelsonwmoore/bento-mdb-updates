@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from string import Template
 from typing import TYPE_CHECKING
 
@@ -23,7 +23,7 @@ from minicypher.statement import Statement
 if TYPE_CHECKING:
     from bento_meta.entity import Entity
 
-DEFAULT_COMMIT = f"CDEPV-{datetime.now(tz=timezone.utc).strftime('%Y%m%d')}"
+DEFAULT_COMMIT = f"CDEPV-{datetime.now(tz=UTC).strftime('%Y%m%d')}"
 DEFAULT_AUTHOR = "DEFAULT"
 
 
@@ -209,7 +209,7 @@ def create_entity_cypher_stmt(
     cypher_ent = cypherize_entity(entity)
     if isinstance(entity, Property) and "_parent_handle" in cypher_ent.props:
         cypher_ent.props.pop("_parent_handle")
-    if isinstance(entity, (Term, ValueSet, Concept)):
+    if isinstance(entity, Term | ValueSet | Concept):
         if "_commit" not in cypher_ent.props:
             stmt = Statement(Merge(cypher_ent))
         # remove _commit prop of Term/VS cypher_ent for Merge

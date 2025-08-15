@@ -3,14 +3,6 @@ name: Update MDB and Data Hub Terms
 on:
   workflow_call:
     inputs:
-      mdb_uri:
-        description: "metamodel database URI"
-        required: true
-        type: string
-      mdb_user:
-        description: "metamodel database username"
-        required: true
-        type: string
       changelog_files:
         description: "JSON array of changelog files to update"
         required: true
@@ -82,15 +74,11 @@ jobs:
             fi
 
             PARAMS=$(jq -n \
-            --arg uri "${{ inputs.mdb_uri }}" \
-            --arg user "${{ inputs.mdb_user }}" \
             --arg file "$file" \
             --arg id "${{ inputs.mdb_id }}" \
             --arg log_level "${{ inputs.log_level || 'info' }}" \
             --argjson dry_run "${{ inputs.dry_run || false }}" \
             '{
-              "mdb_uri": $uri,
-              "mdb_user": $user,
               "changelog_file": $file,
               "mdb_id": $id,
               "log_level": $log_level,

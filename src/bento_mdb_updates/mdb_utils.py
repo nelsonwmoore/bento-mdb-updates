@@ -11,8 +11,6 @@ from bento_mdb_updates.constants import VALID_MDB_IDS
 
 def init_mdb_connection(
     mdb_id: str,
-    uri: str,
-    user: str,
     *,
     writeable: bool = False,
     allow_empty: bool = False,
@@ -21,12 +19,18 @@ def init_mdb_connection(
     if mdb_id not in VALID_MDB_IDS:
         msg = f"Invalid MDB ID: {mdb_id}. Valid IDs: {VALID_MDB_IDS}"
         raise ValueError(msg)
+
+    uri_secret_name = mdb_id + "-uri"
+    usr_secret_name = mdb_id + "-usr"
     pwd_secret_name = mdb_id + "-pwd"
+    uri = Secret.load(uri_secret_name).get()  # type: ignore reportAttributeAccessIssue
+    user = Secret.load(usr_secret_name).get()  # type: ignore reportAttributeAccessIssue
     password = Secret.load(pwd_secret_name).get()  # type: ignore reportAttributeAccessIssue
     if mdb_id.startswith("og-mdb"):
-        password = ""
+        password = ""  # can't set empty string in prefect secrets
     if uri.startswith("jdbc:neo4j:"):
         uri = uri.replace("jdbc:neo4j:", "")
+
     if writeable:
         mdb = WriteableMDB(
             uri=uri,

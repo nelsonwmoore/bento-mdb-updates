@@ -46,12 +46,10 @@ def make_changelog_output_more_visible(changelog_file: Path) -> None:
 
 @task
 def get_current_mdb_cdes(
-    mdb_uri: str,
-    mdb_user: str,
     mdb_id: str,
 ) -> list[MDBCDESpec]:
     """Get current MDB CDEs."""
-    mdb = init_mdb_connection(mdb_id, mdb_uri, mdb_user)
+    mdb = init_mdb_connection(mdb_id)
     return get_cdes_from_mdb(mdb)
 
 
@@ -185,9 +183,7 @@ def commit_new_files(files: list[Path]) -> list:
 
 
 @flow(name="update-terms", log_prints=True)
-def update_terms(  # noqa: PLR0913
-    mdb_uri: str,
-    mdb_user: str,
+def update_terms(
     mdb_id: str,
     author: str,
     output_file: str | Path | None = None,
@@ -204,7 +200,7 @@ def update_terms(  # noqa: PLR0913
         output_file = Path(output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
 
-    mdb_cdes = get_current_mdb_cdes(mdb_uri, mdb_user, mdb_id)
+    mdb_cdes = get_current_mdb_cdes(mdb_id)
     update_cde_spec = update_mdb_cdes_from_term_sources(mdb_cdes)
 
     # convert annotation updates to liquibase changelog
@@ -231,20 +227,6 @@ def update_terms(  # noqa: PLR0913
 
 
 @click.command()
-@click.option(
-    "--mdb_uri",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database URI",
-)
-@click.option(
-    "--mdb_user",
-    required=True,
-    type=str,
-    prompt=True,
-    help="metamodel database username",
-)
 @click.option(
     "--mdb_id",
     required=True,
@@ -279,9 +261,7 @@ def update_terms(  # noqa: PLR0913
     help="Commit string",
     default=False,
 )
-def main(  # noqa: PLR0913
-    mdb_uri: str,
-    mdb_user: str,
+def main(
     mdb_id: str,
     author: str,
     output_file: str | Path | None = None,
@@ -291,8 +271,6 @@ def main(  # noqa: PLR0913
 ) -> None:
     """Check for new CDE PVs and syonyms and generate Cypher to update the database."""
     update_terms(
-        mdb_uri=mdb_uri,
-        mdb_user=mdb_user,
         mdb_id=mdb_id,
         author=author,
         output_file=output_file,
