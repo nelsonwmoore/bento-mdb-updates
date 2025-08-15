@@ -1,4 +1,4 @@
-name: mdb-updates
+name: mdb-updates-fnl
 prefect-version: 3.1.15
 
 pull:
@@ -14,44 +14,7 @@ pull:
     id: install-aws-cli
     script: sh -c "apt-get update && apt-get install -y --no-install-recommends curl unzip && cd /tmp && curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip' -o 'awscliv2.zip' && unzip awscliv2.zip && ./aws/install --update && curl 'https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb' -o 'session-manager-plugin.deb' && dpkg -i session-manager-plugin.deb && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/awscliv2.zip /tmp/aws/ /tmp/session-manager-plugin.deb"
 
-work_pool:
-  name: mdb-docker-pool
-  job_variables: prefect-worker:latest
-  image_pull_policy: Never
 deployments:
-- name: update-terms-test3
-  version:
-  tags: []
-  concurrency_limit:
-  description: Check for new CDE PVs and syonyms and generate Cypher to update the
-    database.
-  entrypoint: scripts/update_terms.py:update_terms
-  parameters: {}
-  work_pool:
-    name: mdb-docker-pool
-    work_queue_name:
-    job_variables:
-      image: '{{ build-image.image }}'
-  schedules: []
-  build:
-  - prefect_docker.deployments.steps.build_docker_image:
-      requires: prefect-docker>=0.3.1
-      id: build-image
-      dockerfile: Dockerfile
-      image_name: nelsonwmoore/prefect-worker
-      tag: latest
-- name: test-neo4j-update
-  version:
-  tags: []
-  concurrency_limit:
-  description: Update the Neo4j database.
-  entrypoint: tests\samples\test_prefect_flow.py:test_update_neo4j_flow
-  parameters: {}
-  work_pool:
-    name: mdb-8gb-prefect-2.20.3-python3.9
-    work_queue_name:
-    job_variables: {}
-  schedules: []
 - name: liquibase-update
   version:
   tags: []
@@ -59,6 +22,7 @@ deployments:
   description: Update the Neo4j database.
   entrypoint: scripts/update_mdb.py:liquibase_update_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-queue
@@ -70,6 +34,7 @@ deployments:
   description: Update the Neo4j database (upper tier).
   entrypoint: scripts/update_mdb.py:liquibase_update_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-upper-queue
@@ -81,6 +46,7 @@ deployments:
   description: Update the Neo4j database (lower tier).
   entrypoint: scripts/update_mdb.py:liquibase_update_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name: liquibase-lower-queue
@@ -92,6 +58,7 @@ deployments:
   description: Update the Neo4j database and datahub terms repo.
   entrypoint: scripts/update_mdb_and_dh.py:update_mdb_and_dh_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
@@ -114,6 +81,7 @@ deployments:
   description: Check for term source updates and update MDB and DH
   entrypoint: scripts/update_terms.py:update_terms
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
@@ -125,6 +93,7 @@ deployments:
   description: Generate matrix with models/versions to be added to MDB.
   entrypoint: scripts/generate_model_version_matrix.py:model_matrix_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
@@ -147,6 +116,7 @@ deployments:
   description: Import MDB data from S3 into Neo4j.
   entrypoint: scripts/mdb_s3.py:mdb_import_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
@@ -158,6 +128,7 @@ deployments:
   description: Clear all nodes and relationships from MDB.
   entrypoint: scripts/mdb_s3.py:mdb_clear_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
@@ -169,6 +140,7 @@ deployments:
   description: Prune prerelease data from MDB.
   entrypoint: scripts/prune_prerelease.py:prune_prerelease_flow
   parameters: {}
+  schedule: null
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
     work_queue_name:
