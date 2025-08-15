@@ -20,7 +20,7 @@ DEFAULT_S3_ENDPOINT = "s3.us-east-1.amazonaws.com"
 
 def get_current_date() -> str:
     """Get current date in YYYYMMDD format."""
-    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y%m%d")
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%Y-%m-%d")
 
 
 @task(name="Build S3 URL")
@@ -144,7 +144,7 @@ def mdb_export_flow(
     Returns S3 URL for chaining operations.
     """
     mdb = init_mdb_connection(mdb_id)
-    s3_key = f"{mdb_id}_{get_current_date()}.graphml"
+    s3_key = f"{get_current_date()}__{mdb_id}.graphml"  # e.g. 2025-08-11__og-mdb-nightly.graphml
     s3_url = build_s3_url(bucket, s3_key, endpoint)
     export_mdb_to_s3(mdb=mdb, s3_url=s3_url)
     return s3_url
