@@ -63,7 +63,7 @@ CCDI:
   - version: 3.1.0
     tag: 3.1.0
   latest_version: 3.1.0
-  latest_prerelease_commit: b86c081a6011e08bf419c233f352770e82fd5f22
+  latest_prerelease_commit: f398826465a2ada6a11ebce09a8474bfafbe25f3
   latest_prerelease_version: 3.1.0
 CDS:
   repository: CBIIT/cds-model
