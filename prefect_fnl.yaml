@@ -103,7 +103,7 @@ deployments:
   tags: []
   concurrency_limit:
   description: Export MDB data from Neo4j into S3.
-  entrypoint: scripts/mdb_s3.py:mdb_export_flow
+  entrypoint: src/bento_mdb_updates/flows/mdb_s3.py:mdb_export_flow
   parameters: {}
   work_pool:
     name: fnl-mdb-8gb-prefect-2.20.3-python3.9
@@ -114,7 +114,7 @@ deployments:
   tags: []
   concurrency_limit:
   description: Import MDB data from S3 into Neo4j.
-  entrypoint: scripts/mdb_s3.py:mdb_import_flow
+  entrypoint: src/bento_mdb_updates/flows/mdb_s3.py:mdb_import_flow
   parameters: {}
   schedule: null
   work_pool:
@@ -126,7 +126,7 @@ deployments:
   tags: []
   concurrency_limit:
   description: Clear all nodes and relationships from MDB.
-  entrypoint: scripts/mdb_s3.py:mdb_clear_flow
+  entrypoint: src/bento_mdb_updates/flows/mdb_s3.py:mdb_clear_flow
   parameters: {}
   schedule: null
   work_pool:

@@ -9,13 +9,12 @@ from zoneinfo import ZoneInfo
 from prefect import flow, get_run_logger, task
 from prefect.cache_policies import NO_CACHE
 
+from bento_mdb_updates.constants import DEFAULT_S3_ENDPOINT, MDB_REL_TYPES
 from bento_mdb_updates.mdb_utils import init_mdb_connection
 
 if TYPE_CHECKING:
     from bento_meta.mdb import MDB
     from bento_meta.mdb.writeable import WriteableMDB
-
-DEFAULT_S3_ENDPOINT = "s3.us-east-1.amazonaws.com"
 
 
 def get_current_date() -> str:
@@ -56,30 +55,48 @@ def export_mdb_to_s3(mdb: MDB, s3_url: str) -> None:
 
 @task(name="Clear MDB Database", cache_policy=NO_CACHE)
 def clear_mdb_database(mdb: WriteableMDB) -> None:
-    """Clear all existing nodes and relationships from the database."""
-    logger = get_run_logger()
-    logger.info("Clearing all nodes and relationships from MDB")
+    """
+    Clear all existing nodes and relationships from the database.
 
-    clear_stmt = (
+    First delete the relationships by type, then delete the remaining nodes.
+    """
+    logger = get_run_logger()
+
+    logger.info("Deleting relationships by type")
+    for rel in MDB_REL_TYPES:
+        rel_stmt = (
+            "CALL apoc.periodic.iterate("
+            f'"MATCH ()-[r:{rel}]-() RETURN r", '
+            '"DELETE r", '
+            "{batchSize: 5000, parallel: true, concurrency: 1}) "
+            "YIELD batches, total, timeTaken, committedOperations "
+            "RETURN batches, total, timeTaken, committedOperations"
+        )
+        result = mdb.put_with_statement(rel_stmt)
+        if result:
+            logger.info("%s relationships deleted: %s", rel, result)
+
+    logger.info("Deleting nodes and any remaining relationships")
+    node_stmt = (
         "CALL apoc.periodic.iterate("
         '"MATCH (n) RETURN n", '
         '"DETACH DELETE n", '
-        "{batchSize: 1000, parallel: false}) "
-        "YIELD batches, total "
-        "RETURN batches, total"
+        "{batchSize: 5000, parallel: true, concurrency: 1}) "
+        "YIELD batches, total, timeTaken, committedOperations "
+        "RETURN batches, total, timeTaken, committedOperations"
     )
 
-    logger.info("Starting database clear operation")
-    result = mdb.put_with_statement(clear_stmt)
-    if result:
-        logger.info("Clear database result: %s", result)
+    final_result = mdb.put_with_statement(node_stmt)
+    if final_result:
+        logger.info("Remaining nodes and relationships deleted: %s", final_result)
     else:
-        clear_fail_msg = "Clear database failed - no results returned"
+        clear_fail_msg = "Clear remaining nodes failed - no results returned"
         raise RuntimeError(clear_fail_msg)
 
+    logger.info("Verify database is cleared")
     count_stmt = "MATCH (n) RETURN count(n) as node_count"
     count_result = mdb.get_with_statement(count_stmt)
-    logger.info("Count result: %s", count_result)
+    logger.info("Final count result: %s", count_result)
 
     if count_result and len(count_result) > 0:
         first_result = count_result[0]
@@ -92,14 +109,9 @@ def clear_mdb_database(mdb: WriteableMDB) -> None:
                 node_count,
             )
 
-            sample_stmt = (
-                "MATCH (n) RETURN labels(n) as labels, keys(n) as properties LIMIT 5"
-            )
-            sample_result = mdb.get_with_statement(sample_stmt)
-            logger.info("Sample remaining nodes: %s", sample_result)
-
             error_msg = f"Clear operation incomplete: {node_count} nodes remaining"
             raise RuntimeError(error_msg)
+
         logger.info("Database successfully cleared - 0 nodes remaining")
 
 
@@ -144,7 +156,7 @@ def mdb_export_flow(
     Returns S3 URL for chaining operations.
     """
     mdb = init_mdb_connection(mdb_id)
-    s3_key = f"{get_current_date()}__{mdb_id}.graphml"  # e.g. 2025-08-11__og-mdb-nightly.graphml
+    s3_key = f"{get_current_date()}__{mdb_id}.graphml"
     s3_url = build_s3_url(bucket, s3_key, endpoint)
     export_mdb_to_s3(mdb=mdb, s3_url=s3_url)
     return s3_url
