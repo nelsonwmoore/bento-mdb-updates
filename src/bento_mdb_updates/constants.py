@@ -15,6 +15,8 @@ VALID_MDB_IDS = [
     "fnl-mdb-qa",
     "cloud-one-mdb-dev",
     "cloud-one-mdb-qa",
+    "cloud-one-mdb-stage",
+    "cloud-one-mdb-prod",
     "og-mdb-dev",
     "og-mdb-nightly",
     "og-mdb-prod",
