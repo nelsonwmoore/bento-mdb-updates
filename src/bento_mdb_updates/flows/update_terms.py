@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Check for new caDSR PVs and NCIT mappings and generate Cypher to update MDB."""
 
 from __future__ import annotations
@@ -8,7 +7,6 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import click
 from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
@@ -224,60 +222,3 @@ def update_terms(
 
     # Print changlog file as JSON for GitHub Actions
     make_changelog_output_more_visible(changelog_file)
-
-
-@click.command()
-@click.option(
-    "--mdb_id",
-    required=True,
-    type=str,
-    prompt=True,
-    help="MDB ID",
-)
-@click.option(
-    "-a",
-    "--author",
-    required=True,
-    type=str,
-    help="Author for changeset",
-)
-@click.option(
-    "--output-file",
-    required=False,
-    type=str,
-    help="Output file path for MDB CDE JSON",
-)
-@click.option(
-    "-c",
-    "--commit",
-    required=False,
-    type=str,
-    help="Commit string",
-)
-@click.option(
-    "--no_commit",
-    required=False,
-    type=str,
-    help="Commit string",
-    default=False,
-)
-def main(
-    mdb_id: str,
-    author: str,
-    output_file: str | Path | None = None,
-    commit: str | None = None,
-    *,
-    no_commit: bool = False,
-) -> None:
-    """Check for new CDE PVs and syonyms and generate Cypher to update the database."""
-    update_terms(
-        mdb_id=mdb_id,
-        author=author,
-        output_file=output_file,
-        commit=commit,
-        no_commit=no_commit,
-    )
-
-
-if __name__ == "__main__":
-    main()  # pylint: disable=no-value-for-parameters

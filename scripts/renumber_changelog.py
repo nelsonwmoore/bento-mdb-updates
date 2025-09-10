@@ -10,6 +10,8 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import click
+
 NAMESPACE = "http://www.liquibase.org/xml/ns/dbchangelog"
 XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"
 NEO4J_NAMESPACE = "http://www.liquibase.org/xml/ns/dbchangelog-ext"
@@ -18,11 +20,11 @@ SCHEMA_LOCATION = f"{NAMESPACE} {NAMESPACE}/dbchangelog-latest.xsd"
 
 def renumber_changelog_id(
     file_path: str | Path,
-    starting_id: int,
+    starting_id: int | None = 1,
     new_file_path: str | Path | None = None,
 ) -> None:
     """Load xml changelog & renumber ids for all changesets."""
-    id_num = starting_id
+    id_num = starting_id if starting_id else 1
     if not new_file_path:
         new_file_path = file_path
 
@@ -49,15 +51,41 @@ def renumber_changelog_id(
     )
 
 
-if __name__ == "__main__":
-    PATH_TO_CHANGELOG = Path(
-        "C:/dev/projects/nelsonwmoore/bento-mdb-updates/data/output/model_changelogs/"
-        "CDS/CDS_6.0.2_cde_changelog.xml",
-    )
-    STARTING_ID = 1
-
+@click.command()
+@click.option(
+    "--file_path",
+    required=True,
+    type=str,
+    prompt=True,
+    help="Path to changelog file",
+)
+@click.option(
+    "--starting_id",
+    required=False,
+    type=int,
+    prompt=True,
+    default=1,
+    help="Starting id. Default 1.",
+)
+@click.option(
+    "--new_file_path",
+    required=False,
+    type=str,
+    prompt=True,
+    help="Path to new changelog file. Default is the same as the original file.",
+)
+def main(
+    file_path: str,
+    starting_id: int | None = 1,
+    new_file_path: str | None = None,
+) -> None:
+    """Renumber changelog ids."""
     renumber_changelog_id(
-        file_path=PATH_TO_CHANGELOG,
-        starting_id=STARTING_ID,
-        new_file_path=PATH_TO_CHANGELOG,
+        file_path=file_path,
+        starting_id=starting_id,
+        new_file_path=new_file_path,
     )
+
+
+if __name__ == "__main__":
+    main()  # pylint: disable=no-value-for-parameters

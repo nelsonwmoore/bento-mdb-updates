@@ -2,7 +2,6 @@
 
 import json
 
-import click
 from github import Github, GithubException, InputGitAuthor
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
@@ -193,39 +192,3 @@ def update_datahub_flow(
     if not no_commit:
         logger.info("Committing changes...")
         update_datahub_terms(pvs_json=pvs_json, tier=tier)
-
-
-@click.command()
-@click.option(
-    "--mdb_id",
-    required=True,
-    type=str,
-    prompt=True,
-    help="MDB ID",
-)
-@click.option(
-    "--tier",
-    required=True,
-    type=str,
-    prompt=True,
-    help="Data Hub tier to update (lower or upper)",
-)
-@click.option(
-    "--no_commit",
-    type=bool,
-    default=False,
-    show_default=True,
-    help="Don't commit changes",
-)
-def main(
-    mdb_id: str,
-    tier: str,
-    *,
-    no_commit: bool = False,
-) -> None:
-    """Generate CDE PV & Synonym JSON and update Data Hub terms repo."""
-    update_datahub_flow(mdb_id=mdb_id, tier=tier, no_commit=no_commit)
-
-
-if __name__ == "__main__":
-    main()

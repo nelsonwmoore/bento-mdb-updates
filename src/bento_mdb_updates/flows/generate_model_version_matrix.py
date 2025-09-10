@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate matrix with models/versions to be added to MDB."""
 
 from __future__ import annotations
@@ -6,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import click
 from prefect import flow
 
 from bento_mdb_updates.constants import MDB_IDS_WITH_PRERELEASES
@@ -68,43 +66,3 @@ def model_matrix_flow(
         ],
     }
     make_matrix_output_more_visible(matrix)
-
-
-@click.command()
-@click.option(
-    "--mdb_id",
-    required=True,
-    type=str,
-    prompt=True,
-    help="MDB ID",
-)
-@click.option(
-    "--model_specs_yaml",
-    required=True,
-    type=str,
-    prompt=True,
-    help="path to model specs yaml file",
-)
-@click.option(
-    "--datahub_only",
-    required=False,
-    type=bool,
-    default=False,
-    help="only include datahub models",
-)
-def main(
-    mdb_id: str,
-    model_specs_yaml: str,
-    *,
-    datahub_only: bool,
-) -> None:
-    """Generate matrix with models/versions to be added to MDB."""
-    model_matrix_flow(
-        mdb_id=mdb_id,
-        model_specs_yaml=model_specs_yaml,
-        datahub_only=datahub_only,
-    )
-
-
-if __name__ == "__main__":
-    main()

@@ -10,7 +10,6 @@ import tempfile
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
-import click
 from prefect import flow, get_run_logger, task
 from prefect.blocks.system import Secret
 from prefect.logging.handlers import APILogHandler
@@ -183,39 +182,3 @@ def liquibase_update_flow(
                 logger.exception("Error deleting log file %s", log_file)
 
     logger.info("Liquibase finished.")
-
-
-@click.command()
-@click.option(
-    "--changelog_file",
-    required=True,
-    type=str,
-    prompt=True,
-    help="Changelog file to update",
-)
-@click.option("--mdb_id", type=str, help="MDB ID", prompt=True, required=True)
-@click.option("--log_level", type=str, help="Log level", prompt=True, required=True)
-@click.option(
-    "--dry_run",
-    is_flag=True,
-    default=False,
-    help="Dry run flag",
-)
-def main(
-    changelog_file: str,
-    mdb_id: str,
-    log_level: str,
-    *,
-    dry_run: bool = False,
-) -> None:
-    """Run Liquibase Update on Changelog."""
-    liquibase_update_flow(
-        changelog_file=changelog_file,
-        mdb_id=mdb_id,
-        log_level=log_level,
-        dry_run=dry_run,
-    )
-
-
-if __name__ == "__main__":
-    main()  # type: ignore reportCallIssue
