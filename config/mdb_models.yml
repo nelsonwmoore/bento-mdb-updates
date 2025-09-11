@@ -174,9 +174,13 @@ CTDC:
     tag: 1.15.0
   - version: 1.16.0
     tag: 1.16.0
-  latest_version: 1.16.0
-  latest_prerelease_commit: 5f29b12d446e303ac633c0ca40dc95e933740a5f
-  latest_prerelease_version: 1.16.0
+  - version: 1.17.0
+    tag: 1.17.0
+  - version: 1.18.0
+    tag: 1.18.0
+  latest_version: 1.18.0
+  latest_prerelease_commit: 5b5d2579490a00cf80cec1790f228b283af00f3d
+  latest_prerelease_version: 1.18.0
 GDC:
   repository: CBIIT/gdc-model
   mdf_directory: model-desc
