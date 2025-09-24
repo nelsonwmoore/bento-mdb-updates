@@ -1,11 +1,11 @@
 name: Generate and Commit FNL Model Updates Changelogs
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - config/mdb_models.yml
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - config/mdb_models.yml
   workflow_dispatch: # update an mdb with a certain model version
     inputs:
       models_spec_path:
